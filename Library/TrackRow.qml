@@ -18,9 +18,9 @@ Item {
     required property int index
     required property int keyColumnWidth
     required property bool loadEnabled
-    required property int loaded_deck_mask
+    property int loadedDeckMask: 0
     property bool menuOpen: false
-    required property bool preview_deck_loaded
+    property bool previewDeckLoaded: false
     property bool previewHoldTriggered: false
     required property bool previewEnabled
     required property int ratingColumnWidth
@@ -62,13 +62,13 @@ Item {
         return palette[openKeyNumber - 1];
     }
     readonly property color loadedMarkerColor: {
-        if (loaded_deck_mask & 1) {
+        if (root.loadedDeckMask & 1) {
             return TouchTheme.deck1Accent;
         }
-        if (loaded_deck_mask & 2) {
+        if (root.loadedDeckMask & 2) {
             return TouchTheme.deck2Accent;
         }
-        if (preview_deck_loaded) {
+        if (root.previewDeckLoaded) {
             return TouchTheme.previewAccent;
         }
         return root.selected ? TouchTheme.deck1Accent : "transparent";

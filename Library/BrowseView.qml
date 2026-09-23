@@ -17,7 +17,10 @@ Rectangle {
     readonly property int keyColumnWidth: 48
     readonly property int libraryViewFocus: 3
     readonly property var modelCapabilities: root.trackModel ? root.trackModel.getCapabilities() : Mixxx.LibraryTrackListModel.Capability.None
+    readonly property url deck1LoadedUrl: Mixxx.PlayerManager.getPlayer("[Channel1]")?.currentTrack?.trackLocationUrl ?? ""
+    readonly property url deck2LoadedUrl: Mixxx.PlayerManager.getPlayer("[Channel2]")?.currentTrack?.trackLocationUrl ?? ""
     property var openSwipeRow: null
+    readonly property url previewDeckLoadedUrl: Mixxx.PlayerManager.getPlayer(root.previewDeckGroup)?.currentTrack?.trackLocationUrl ?? ""
     readonly property string previewDeckGroup: "[PreviewDeck1]"
     readonly property int ratingColumnWidth: 72
     property int selectedListIndex: -1
@@ -445,6 +448,11 @@ Rectangle {
             genreColumnWidth: root.genreColumnWidth
             keyColumnWidth: root.keyColumnWidth
             loadEnabled: root.canLoadToDeck
+            loadedDeckMask: {
+                const url = file_url.toString();
+                return (url === root.deck1LoadedUrl.toString() ? 1 : 0) | (url === root.deck2LoadedUrl.toString() ? 2 : 0);
+            }
+            previewDeckLoaded: file_url.toString() === root.previewDeckLoadedUrl.toString()
             previewEnabled: root.canLoadToPreviewDeck
             ratingColumnWidth: root.ratingColumnWidth
             selected: root.selectedUrl.toString() === file_url.toString()
