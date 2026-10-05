@@ -10,6 +10,13 @@ import QtQuick.Layouts
 Rectangle {
     id: root
 
+    property bool applyingSearchFilter: false
+    property bool resetSelectionOnFilter: false
+    property bool restoreScrollAfterFilter: false
+    property bool revealSelectionAfterFilter: false
+    property real savedScrollOffset: 0
+    property bool sourceActivationInProgress: false
+    property int sourceLabelRevision: 0
     property int appearanceRevision: 0
     property var availableGenres: []
     readonly property int bpmColumnWidth: 64
@@ -21,24 +28,67 @@ Rectangle {
     readonly property int lastPlayedColumnWidth: 96 + Math.round(16 * root.columnWidthProgress)
     readonly property int libraryViewFocus: 3
     property int metadataRevision: 0
-    readonly property var modelCapabilities: root.trackModel ? root.trackModel.getCapabilities() : Mixxx.LibraryTrackListModel.Capability.None
+    readonly property var modelCapabilities: root.trackModel ? root.trackModel.capabilities : Mixxx.LibraryTrackListModel.Capability.None
     property var openSwipeRow: null
     readonly property string previewDeckGroup: "[PreviewDeck1]"
     readonly property int ratingColumnWidth: 64 + Math.round(8 * root.columnWidthProgress)
     property int selectedListIndex: -1
     property string selectedGenreFilter: ""
-    property string selectedSourceLabel: qsTr("All Tracks")
+    readonly property string selectedSourceLabel: {
+        root.sourceLabelRevision;
+        const index = sourceSelection.currentIndex;
+        return index.valid ? String(root.sourceModel.data(index, Qt.DisplayRole)) : qsTr("Tracks");
+    }
     property url selectedUrl
     property int sortColumn: 1
     property int sortOrder: Qt.AscendingOrder
-    property var sourceModel: null
-    property var trackModel: null
+    readonly property var sourceModel: Mixxx.Library.sidebar
+    readonly property var trackModel: Mixxx.Library.model
 
     readonly property bool canLoadToDeck: root.hasCapabilities(Mixxx.LibraryTrackListModel.Capability.LoadToDeck)
     readonly property bool canLoadToPreviewDeck: numPreviewDecksControl.value > 0 && root.hasCapabilities(Mixxx.LibraryTrackListModel.Capability.LoadToPreviewDeck)
     readonly property bool canSort: root.hasCapabilities(Mixxx.LibraryTrackListModel.Capability.Sorting)
 
-    function applySearchFilter(resetSelection = true) {
+    function cancelPendingPositionRestore() {
+        root.restoreScrollAfterFilter = false;
+        root.revealSelectionAfterFilter = false;
+    }
+    function preserveBrowsePosition() {
+        if (!root.resetSelectionOnFilter && !root.restoreScrollAfterFilter &&
+                !trackList.moving && !trackScrollBar.pressed) {
+            root.savedScrollOffset = trackList.contentY - trackList.originY;
+            root.restoreScrollAfterFilter = true;
+        }
+    }
+    function scheduleSearchFilter(resetSelection = false) {
+        if (root.sourceActivationInProgress && !resetSelection) {
+            return;
+        }
+        if (resetSelection) {
+            root.resetSelectionOnFilter = true;
+            root.restoreScrollAfterFilter = false;
+            root.revealSelectionAfterFilter = false;
+        }
+        searchFilterTimer.restart();
+    }
+    function finishFilterUpdate() {
+        if (root.sourceActivationInProgress || searchFilterTimer.running || root.applyingSearchFilter) {
+            return;
+        }
+        root.ensureSelection();
+        trackList.forceLayout();
+        if (root.revealSelectionAfterFilter) {
+            if (root.selectedListIndex >= 0) {
+                trackList.positionViewAtIndex(root.selectedListIndex, ListView.Contain);
+            }
+        } else if (root.restoreScrollAfterFilter && !trackList.moving && !trackScrollBar.pressed) {
+            const maximumOffset = Math.max(0, trackList.contentHeight - trackList.height);
+            trackList.contentY = trackList.originY + Math.max(0, Math.min(root.savedScrollOffset, maximumOffset));
+        }
+        root.restoreScrollAfterFilter = false;
+        root.revealSelectionAfterFilter = false;
+    }
+    function applySearchFilter(resetSelection = false) {
         if (root.trackModel === null) {
             return;
         }
@@ -46,24 +96,56 @@ Rectangle {
             root.openSwipeRow.closeMenu();
         }
         if (resetSelection) {
+            root.restoreScrollAfterFilter = false;
             root.selectedUrl = "";
             root.selectedListIndex = -1;
         }
-        root.refreshAvailableGenres();
+        root.applyingSearchFilter = true;
+        const genresByKey = {};
         const query = searchField.text.trim().toLocaleLowerCase();
         const genreFilter = root.selectedGenreFilter.toLocaleLowerCase();
+        const filtersActive = query.length > 0 || genreFilter.length > 0;
+        const matchingUrls = new Set();
+        for (let row = 0; row < root.trackModel.rowCount(); ++row) {
+            const genre = root.filterColumnText(row, 1).trim();
+            const genreKey = genre.toLocaleLowerCase();
+            if (genre.length > 0 && !Object.prototype.hasOwnProperty.call(genresByKey, genreKey)) {
+                genresByKey[genreKey] = genre;
+            }
+            if (!filtersActive || (genreFilter.length > 0 && genreKey !== genreFilter)) {
+                continue;
+            }
+            if (query.length > 0) {
+                const numericKey = Number(root.trackModel.data(root.trackModel.index(row, 9), Qt.EditRole)) || 0;
+                const key = Mixxx.KeyUtils.keyToString(numericKey, keyNotationControl.value);
+                const searchableText = [root.filterColumnText(row, 0), root.filterColumnText(row, 8),
+                        genre, root.filterColumnText(row, 2), key].join(" ").toLocaleLowerCase();
+                if (!searchableText.includes(query)) {
+                    continue;
+                }
+            }
+            matchingUrls.add(root.trackModel.getUrl(row).toString());
+        }
         for (let i = filteredTrackModel.items.count - 1; i >= 0; --i) {
             const entry = filteredTrackModel.items.get(i);
-            const track = entry.model.track;
-            const genre = String(track?.genre || "").trim();
-            const searchableText = [track?.title, track?.artist, track?.genre, track?.comment, root.formattedKey(track)].map(value => String(value || "")).join(" ").toLocaleLowerCase();
-            const genreMatches = genreFilter.length === 0 || genre.toLocaleLowerCase() === genreFilter;
-            entry.inSearchResults = genreMatches && (query.length === 0 || searchableText.includes(query));
+            const matches = !filtersActive || matchingUrls.has(entry.model.file_url.toString());
+            if (entry.inSearchResults !== matches) {
+                if (!resetSelection) {
+                    root.preserveBrowsePosition();
+                }
+                entry.inSearchResults = matches;
+            }
         }
+        root.availableGenres = Object.keys(genresByKey).map(key => genresByKey[key]).sort((left, right) => left.localeCompare(right));
+        root.applyingSearchFilter = false;
         if (resetSelection) {
             trackList.positionViewAtBeginning();
         }
-        Qt.callLater(root.ensureSelection);
+        Qt.callLater(root.finishFilterUpdate);
+    }
+    function filterColumnText(row, column) {
+        const value = root.trackModel.data(root.trackModel.index(row, column), Qt.EditRole);
+        return value === undefined || value === null ? "" : String(value);
     }
     function columnValue(row, column, role) {
         if (!root.trackModel || row < 0) {
@@ -118,18 +200,8 @@ Rectangle {
     function loadSelectedIntoDeck(group, play = false) {
         return root.loadUrlIntoDeck(root.selectedUrl, group, play);
     }
-    function refreshAvailableGenres() {
-        const genresByKey = {};
-        for (let i = 0; i < filteredTrackModel.items.count; ++i) {
-            const genre = String(filteredTrackModel.items.get(i).model.track?.genre || "").trim();
-            const key = genre.toLocaleLowerCase();
-            if (genre.length > 0 && !Object.prototype.hasOwnProperty.call(genresByKey, key)) {
-                genresByKey[key] = genre;
-            }
-        }
-        root.availableGenres = Object.keys(genresByKey).map(key => genresByKey[key]).sort((left, right) => left.localeCompare(right));
-    }
     function moveSelection(direction) {
+        root.cancelPendingPositionRestore();
         const count = searchResultsGroup.count;
         if (count === 0) {
             return;
@@ -147,6 +219,9 @@ Rectangle {
         trackList.positionViewAtIndex(nextIndex, ListView.Contain);
     }
     function ensureSelection() {
+        if (root.sourceActivationInProgress || searchFilterTimer.running || root.applyingSearchFilter) {
+            return;
+        }
         const count = searchResultsGroup.count;
         if (count === 0) {
             root.selectedListIndex = -1;
@@ -161,30 +236,59 @@ Rectangle {
                 return;
             }
         }
-        const firstEntry = searchResultsGroup.get(0);
-        root.selectedListIndex = 0;
-        root.selectedUrl = firstEntry.model.file_url;
-        trackList.currentIndex = 0;
+        const nextIndex = Math.max(0, Math.min(root.selectedListIndex, count - 1));
+        root.selectedListIndex = nextIndex;
+        root.selectedUrl = searchResultsGroup.get(nextIndex).model.file_url;
+        trackList.currentIndex = nextIndex;
     }
-    function activateSource(modelIndex, label) {
+    function activateSource(modelIndex) {
+        if (!modelIndex.valid) {
+            return false;
+        }
+        root.sourceActivationInProgress = true;
+        searchFilterTimer.stop();
+        filteredTrackModel.model = null;
+        root.sourceModel.activate(modelIndex);
+        sourceSelection.setCurrentIndex(modelIndex, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
+        root.resetSourceTrackState();
+        root.sourceActivationInProgress = false;
+        return true;
+    }
+    function resetSourceTrackState() {
+        const wasActivating = root.sourceActivationInProgress;
+        root.sourceActivationInProgress = true;
+        searchFilterTimer.stop();
+        root.cancelPendingPositionRestore();
+        root.resetSelectionOnFilter = true;
         if (root.openSwipeRow) {
             root.openSwipeRow.closeMenu();
         }
+        root.openSwipeRow = null;
+        filteredTrackModel.model = null;
         root.selectedUrl = "";
         root.selectedListIndex = -1;
         root.selectedGenreFilter = "";
         root.availableGenres = [];
+        searchField.text = "";
+        root.sortColumn = 1;
+        root.sortOrder = Qt.AscendingOrder;
         trackList.currentIndex = -1;
-        root.sourceModel.activate(modelIndex);
-        root.trackModel = root.sourceModel.tracklist;
-        if (root.sortColumn >= 0) {
+        root.trackModel.search("");
+        if (root.canSort) {
             root.trackModel.sort(root.sortColumn, root.sortOrder);
         }
-        root.selectedSourceLabel = label;
-        searchFilterTimer.restart();
+        filteredTrackModel.model = root.trackModel;
+        root.sourceActivationInProgress = wasActivating;
+        root.scheduleSearchFilter(true);
         trackList.positionViewAtBeginning();
     }
+    function sourceTreeIndex(row, column) {
+        return sourceTreeView.index
+                ? sourceTreeView.index(row, column)
+                : sourceTreeView.modelIndex(Qt.point(column, row));
+    }
     function selectTrack(url, row) {
+        root.cancelPendingPositionRestore();
         if (root.openSwipeRow && root.openSwipeRow !== row) {
             root.openSwipeRow.closeMenu();
         }
@@ -204,21 +308,9 @@ Rectangle {
             root.sortColumn = column;
             root.sortOrder = Qt.AscendingOrder;
         }
+        root.revealSelectionAfterFilter = true;
         root.trackModel.sort(root.sortColumn, root.sortOrder);
-        Qt.callLater(root.restoreSelectedIndex);
-    }
-    function restoreSelectedIndex() {
-        for (let i = 0; i < searchResultsGroup.count; ++i) {
-            if (searchResultsGroup.get(i).model.file_url.toString() === root.selectedUrl.toString()) {
-                root.selectedListIndex = i;
-                trackList.currentIndex = i;
-                trackList.positionViewAtIndex(i, ListView.Contain);
-                return;
-            }
-        }
-        root.selectedListIndex = -1;
-        root.selectedUrl = "";
-        trackList.currentIndex = -1;
+        root.scheduleSearchFilter();
     }
 
     color: TouchTheme.libraryBackground
@@ -226,15 +318,18 @@ Rectangle {
     onVisibleChanged: root.appearanceRevision++
 
     Component.onCompleted: {
-        root.sourceModel = sourceTree.sidebar();
-        root.activateSource(root.sourceModel.index(0, 0), qsTr("All Tracks"));
+        root.trackModel.setColumns(sourceColumns.defaultColumns);
+        const firstSource = root.sourceModel.index(0, 0);
+        root.sourceModel.activate(firstSource);
+        sourceSelection.setCurrentIndex(firstSource, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
+        root.resetSourceTrackState();
         if (libraryViewControl.value > 0) {
             focusedWidgetControl.value = root.libraryViewFocus;
         }
     }
 
     Mixxx.LibrarySourceTree {
-        id: sourceTree
+        id: sourceColumns
 
         visible: false
 
@@ -271,14 +366,17 @@ Rectangle {
             Mixxx.TrackListColumn {
                 columnIdx: 41 // ColumnCache::COLUMN_LIBRARYTABLE_LAST_PLAYED_AT
                 label: qsTr("Last")
+            },
+            Mixxx.TrackListColumn {
+                columnIdx: Mixxx.TrackListColumn.SQLColumns.Artist
+                label: qsTr("Artist")
+            },
+            Mixxx.TrackListColumn {
+                columnIdx: 28 // ColumnCache::COLUMN_LIBRARYTABLE_KEY_ID
+                label: qsTr("Numeric Key")
             }
         ]
         // qmllint enable unresolved-type
-
-        Mixxx.LibraryAllTrackSource {
-            columns: sourceTree.defaultColumns
-            label: qsTr("All Tracks")
-        }
     }
     Mixxx.ControlProxy {
         id: keyNotationControl
@@ -452,28 +550,81 @@ Rectangle {
             }
         }
     }
-    Connections {
-        function onTracklistChanged() {
-            root.trackModel = root.sourceModel.tracklist;
-            if (root.sortColumn >= 0) {
-                root.trackModel.sort(root.sortColumn, root.sortOrder);
-            }
-            searchFilterTimer.restart();
-        }
+    ItemSelectionModel {
+        id: sourceSelection
 
+        model: root.sourceModel
+    }
+    Connections {
         target: root.sourceModel
+
+        function onSelectIndex(index, scrollTo) {
+            sourceSelection.setCurrentIndex(index, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
+            sourceTreeView.expandToIndex(index);
+        }
+        function onDataChanged() {
+            root.sourceLabelRevision++;
+        }
+        function onModelReset() {
+            root.sourceLabelRevision++;
+        }
     }
     Connections {
         target: root.trackModel
 
-        function onDataChanged() {
+        function onDataChanged(topLeft, bottomRight, roles) {
+            if (roles.length > 0 && roles.every(role =>
+                    role === Mixxx.LibraryTrackListModel.LoadedDeckMask ||
+                    role === Mixxx.LibraryTrackListModel.PreviewDeckLoaded)) {
+                return;
+            }
             root.metadataRevision++;
+            root.scheduleSearchFilter();
+        }
+        function onLayoutAboutToBeChanged() {
+            root.preserveBrowsePosition();
+            root.scheduleSearchFilter();
         }
         function onLayoutChanged() {
             root.metadataRevision++;
+            root.scheduleSearchFilter();
+        }
+        function onModelAboutToBeReset() {
+            root.preserveBrowsePosition();
+            root.scheduleSearchFilter();
+        }
+        function onRowsAboutToBeRemoved() {
+            root.preserveBrowsePosition();
+            root.scheduleSearchFilter();
+        }
+        function onRowsAboutToBeInserted() {
+            root.preserveBrowsePosition();
+            root.scheduleSearchFilter();
+        }
+        function onRowsAboutToBeMoved() {
+            root.preserveBrowsePosition();
+            root.scheduleSearchFilter();
+        }
+        function onRowsInserted() {
+            root.metadataRevision++;
+            root.scheduleSearchFilter();
+        }
+        function onRowsRemoved() {
+            root.metadataRevision++;
+            root.scheduleSearchFilter();
+        }
+        function onRowsMoved() {
+            root.metadataRevision++;
+            root.scheduleSearchFilter();
         }
         function onModelReset() {
             root.metadataRevision++;
+            root.scheduleSearchFilter();
+        }
+        function onSourceModelChanged() {
+            if (!root.sourceActivationInProgress) {
+                root.resetSourceTrackState();
+            }
         }
     }
     Connections {
@@ -497,11 +648,15 @@ Rectangle {
 
         interval: 120
 
-        onTriggered: root.applySearchFilter()
+        onTriggered: {
+            const resetSelection = root.resetSelectionOnFilter;
+            root.resetSelectionOnFilter = false;
+            root.applySearchFilter(resetSelection);
+        }
     }
     Connections {
         function onCountChanged() {
-            searchFilterTimer.restart();
+            root.scheduleSearchFilter();
         }
 
         target: filteredTrackModel.items
@@ -620,7 +775,7 @@ Rectangle {
                     }
                 }
 
-                onTextChanged: searchFilterTimer.restart()
+                onTextChanged: root.scheduleSearchFilter(true)
             }
             Rectangle {
                 Layout.preferredHeight: TouchTheme.minimumTouchSize
@@ -711,7 +866,7 @@ Rectangle {
                 label: qsTr("GENRE")
 
                 onHeld: {
-                    root.refreshAvailableGenres();
+                    root.applySearchFilter();
                     genrePicker.open();
                 }
             }
@@ -766,8 +921,11 @@ Rectangle {
         clip: true
         currentIndex: -1
         focus: libraryViewControl.value > 0
+        highlightFollowsCurrentItem: false
         model: filteredTrackModel
         reuseItems: true
+
+        onMovementStarted: root.cancelPendingPositionRestore()
 
         Keys.onDownPressed: event => {
             root.moveSelection(1);
@@ -787,7 +945,15 @@ Rectangle {
         }
 
         ScrollBar.vertical: ScrollBar {
+            id: trackScrollBar
+
             policy: ScrollBar.AsNeeded
+
+            onPressedChanged: {
+                if (pressed) {
+                    root.cancelPendingPositionRestore();
+                }
+            }
         }
     }
     Text {
@@ -806,17 +972,36 @@ Rectangle {
         y: Math.round((parent.height - height) / 2)
         width: Math.min(400, parent.width - 32)
         height: Math.min(520, 56 + (root.availableGenres.length + 1) * TouchTheme.minimumTouchSize, parent.height - 32)
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnReleaseOutside
         focus: true
         modal: true
         padding: 0
 
+        Overlay.modal: Rectangle {
+            color: "#80000000"
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+                preventStealing: true
+
+                onClicked: genrePicker.close()
+                onWheel: wheel => wheel.accepted = true
+            }
+        }
         background: Rectangle {
             border.color: TouchTheme.deck1Accent
             border.width: 1
             color: TouchTheme.libraryBackground
         }
         contentItem: Item {
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+
+                onWheel: wheel => wheel.accepted = true
+            }
+
             Rectangle {
                 id: genrePickerHeader
 
@@ -857,6 +1042,8 @@ Rectangle {
                     }
                     TapHandler {
                         id: closeGenrePickerTap
+
+                        gesturePolicy: TapHandler.WithinBounds
 
                         onTapped: genrePicker.close()
                     }
@@ -913,9 +1100,11 @@ Rectangle {
                     TapHandler {
                         id: genreDelegateTap
 
+                        gesturePolicy: TapHandler.WithinBounds
+
                         onTapped: {
                             root.selectedGenreFilter = genreDelegate.modelData;
-                            root.applySearchFilter();
+                            root.applySearchFilter(true);
                             genrePicker.close();
                         }
                     }
@@ -931,17 +1120,36 @@ Rectangle {
         y: Math.round((parent.height - height) / 2)
         width: Math.min(440, parent.width - 32)
         height: Math.min(520, parent.height - 32)
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnPressOutside
+        closePolicy: Popup.CloseOnEscape | Popup.CloseOnReleaseOutside
         focus: true
         modal: true
         padding: 0
 
+        Overlay.modal: Rectangle {
+            color: "#80000000"
+
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+                preventStealing: true
+
+                onClicked: sourcePicker.close()
+                onWheel: wheel => wheel.accepted = true
+            }
+        }
         background: Rectangle {
             border.color: TouchTheme.deck1Accent
             border.width: 1
             color: TouchTheme.libraryBackground
         }
         contentItem: Item {
+            MouseArea {
+                anchors.fill: parent
+                acceptedButtons: Qt.AllButtons
+
+                onWheel: wheel => wheel.accepted = true
+            }
+
             Rectangle {
                 id: sourcePickerHeader
 
@@ -983,6 +1191,8 @@ Rectangle {
                     TapHandler {
                         id: closeSourcePickerTap
 
+                        gesturePolicy: TapHandler.WithinBounds
+
                         onTapped: sourcePicker.close()
                     }
                 }
@@ -1002,6 +1212,9 @@ Rectangle {
                 anchors.top: sourcePickerHeader.bottom
                 clip: true
                 model: root.sourceModel
+                selectionModel: sourceSelection
+
+                onExpanded: (row, depth) => root.sourceModel.expand(root.sourceTreeIndex(row, 0))
 
                 delegate: Rectangle {
                     id: sourceDelegate
@@ -1009,14 +1222,15 @@ Rectangle {
                     required property int column
                     required property int depth
                     required property bool expanded
-                    required property int hasChildren
+                    required property bool hasChildren
                     required property bool isTreeNode
                     required property string label
+                    required property bool selected
                     required property int row
                     required property TreeView treeView
-                    readonly property var modelIndex: treeView.modelIndex(column, row)
+                    readonly property var modelIndex: root.sourceTreeIndex(row, column)
 
-                    color: root.selectedSourceLabel === label ? TouchTheme.libraryRowSelectedBackground : sourceDelegateTap.pressed ? TouchTheme.controlPressedBackground : depth === 0 ? TouchTheme.controlBackground : TouchTheme.libraryRowBackground
+                    color: selected ? TouchTheme.libraryRowSelectedBackground : sourceDelegateTap.pressed ? TouchTheme.controlPressedBackground : depth === 0 ? TouchTheme.controlBackground : TouchTheme.libraryRowBackground
                     implicitHeight: 52
                     implicitWidth: treeView.width
 
@@ -1037,7 +1251,7 @@ Rectangle {
                         anchors.right: parent.right
                         anchors.rightMargin: 16
                         anchors.verticalCenter: parent.verticalCenter
-                        color: root.selectedSourceLabel === sourceDelegate.label ? TouchTheme.deck1Accent : TouchTheme.primaryText
+                        color: sourceDelegate.selected ? TouchTheme.deck1Accent : TouchTheme.primaryText
                         elide: Text.ElideRight
                         font.family: TouchTheme.fontFamily
                         font.pixelSize: 15
@@ -1053,12 +1267,18 @@ Rectangle {
                     TapHandler {
                         id: sourceDelegateTap
 
+                        gesturePolicy: TapHandler.WithinBounds
+
                         onTapped: {
-                            root.activateSource(sourceDelegate.modelIndex, sourceDelegate.label);
-                            if (sourceDelegate.isTreeNode && sourceDelegate.hasChildren > 0) {
+                            if (sourceDelegate.isTreeNode && sourceDelegate.hasChildren) {
                                 sourceDelegate.treeView.toggleExpanded(sourceDelegate.row);
-                            } else {
-                                sourcePicker.close();
+                                if (sourceDelegate.depth === 0 && sourceDelegate.modelIndex.row === 0) {
+                                    root.activateSource(sourceDelegate.modelIndex);
+                                }
+                            } else if (sourceDelegate.depth > 0 || sourceDelegate.modelIndex.row === 0) {
+                                if (root.activateSource(sourceDelegate.modelIndex)) {
+                                    sourcePicker.close();
+                                }
                             }
                         }
                     }

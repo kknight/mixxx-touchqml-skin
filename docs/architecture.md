@@ -360,8 +360,11 @@ The current components are:
   `EffectsManager.visibleEffectsModel` or `quickChainPresetModel`; choosing an
   item changes `EffectSlotProxy.effectId` or `loaded_chain_preset` without
   changing the slot or chain enabled state.
-- `BrowseView`: a touch-native all-tracks list backed by
-  `Mixxx.LibrarySourceTree`/`LibraryTrackListModel`. Its visible columns show
+- `BrowseView`: a touch-native browser backed by `Mixxx.Library.sidebar` and
+  the shared `Mixxx.Library.model` track proxy. It requires the APIs from the
+  Mixxx `feature/qml-library-sidebar` branch. A column-only `LibrarySourceTree`
+  supplies the definitions passed to `Library.model.setColumns()`; it creates
+  no private library features. Its visible columns show
   track/artist, Genre, Comment, BPM, Rating, Key, Time, and Last, in that order.
   Metadata comes from live QML track properties; BPM and Last Played use
   `LibraryTrackListModel.data()` with `Qt.DisplayRole` for Mixxx's localized
@@ -396,11 +399,26 @@ The current components are:
   `Player.loadTrackFromLocationUrl()`; double-tapping remains an optional next-
   available-deck shortcut. Opening a row closes the previously open row, and
   pooled delegates reset before reuse. A source button beside search opens a
-  centered touch tree backed by `LibrarySourceTree.sidebar()` and swaps the
-  track model when a source is activated. Current Mixxx QML exposes only the
-  creatable `LibraryAllTrackSource`; playlist, crate, and other source wrappers
-  are not yet available to an external QML skin, so the picker currently
-  contains All Tracks only. Its 48-pixel headers call
+  centered touch tree backed by the live core sidebar, including crates,
+  dynamic crates, playlists, and history. Category taps expand/collapse without
+  replacing the track list; the first root also activates the Tracks library.
+  Source and genre popups consume mouse/touch input through exclusive control
+  tap handlers and accepting content/backdrop MouseAreas. Backdrop dismissal
+  waits for release, preventing a dismissal press from reaching lower controls.
+  Empty popup areas and backdrop wheel events are consumed; list scrolling
+  remains available. Leaf taps call `sidebar.activate()` and close the picker. Expansion calls
+  `sidebar.expand()` for lazy children. An `ItemSelectionModel` tracks sidebar
+  selection and follows the core's `selectIndex` signal. Source labels refresh
+  after sidebar edits. Source activation detaches the DelegateModel before the
+  core changes its rows, then clears selection, swipe state, local text/genre
+  filters, pending scroll restoration, and the source model's saved search.
+  It applies Genre ascending when sorting is supported, reattaches the model
+  to recreate groups/delegates, and selects the first track once filtering
+  settles. External track-model source changes use the same reset. The shared
+  model's notifying `capabilities` property controls sorting and loading.
+  Entries that only switch to legacy widget pages remain visible in the tree,
+  but those pages are not rendered here; activating them leaves the track
+  proxy's previous data visible. Its 48-pixel headers call
   `LibraryTrackListModel.sort()` when the model advertises sorting support and
   default to Genre ascending, then preserve selection by URL across later
   ascending and descending sorts. Holding the Genre header for 500 milliseconds
@@ -414,7 +432,36 @@ The current components are:
   Last Played is 41 in the current checkout. All eight headers sort their
   corresponding model column; Genre remains the initial ascending sort.
   Persistent page ownership also preserves ListView position while Browse is
-  hidden. A compact Preview Deck 1 control sits left of search:
+  hidden. Model refreshes, including deck/preview load metadata and dynamic
+  crate membership updates, reapply local filters without clearing the selected
+  URL or scrolling to the beginning. Deck/preview indicator-only data changes
+  do not trigger filtering: delegates consume those roles directly. Search and
+  genre choices read cached scalar metadata through `Library.model.data()`
+  with `Qt.EditRole`, never the full `track` role. Two extra model columns
+  expose Artist and numeric Key for filtering only; the eight visible columns
+  remain unchanged. Key searches use the same live notation as row labels.
+  URL matching maps source rows to DelegateModel entries without assuming that
+  filtered indices equal source indices. Empty search/genre filters skip title,
+  artist, comment, key, and URL reads. Full QML track objects remain confined to
+  visible/pooled delegates. Before row removal, insertion, movement, layout
+  changes, or resets, Browse saves the scroll offset; after the debounced
+  update settles, it remaps the URL into the filtered list and restores the
+  offset within the new scroll limits. Manual flick/wheel scrolling, scrollbar
+  dragging, and explicit row selection/movement cancel pending restoration.
+  Completed row insertions, removals, and moves refresh scalar display values
+  and schedule filter/selection reconciliation, even without a model reset or
+  an accompanying metadata notification.
+  Metadata-only refreshes do not capture scroll position unless filtering
+  changes group membership. ListView does not automatically follow currentIndex;
+  keyboard/controller movement and explicit sorting position the selected row.
+  Selection reconciliation waits through
+  transient empty lists. If the selected track disappears, it chooses the
+  nearest remaining filtered row, or clears selection for a genuinely empty
+  result. Explicit source changes reset search, genre, sorting, selection, and
+  scroll. Query/genre changes reset selection and scroll; sorting preserves the
+  selected URL and brings its new row into view. Loading does not request a
+  sort or reset the source.
+  A compact Preview Deck 1 control sits left of search:
   its play/pause button drives the standard preview-deck play control, and its
   full-track RGB overview shows playback position and supports touch seeking.
   Holding a load-capable track row for 500 milliseconds selects it, loads it

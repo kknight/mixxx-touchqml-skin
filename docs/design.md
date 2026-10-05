@@ -320,11 +320,27 @@ query, sort, selected row, and scroll position without rebuilding the model.
   current item, and visible position remain synchronized. Loading and sorting
   honor the active model's advertised capabilities. Browse state remains
   available for the next opening.
+- Loading a track into a deck or preview must preserve Browse selection and
+  scroll position during metadata and model refreshes. Reconcile selection by
+  URL after the filtered list settles, including temporary empty/rebuilt crate
+  lists and incremental row insertions, removals, or moves. A metadata-driven
+  row move preserves the scroll position without automatically revealing the
+  selected row. If a dynamic crate removes the selected track, select the nearest
+  remaining row and clamp the previous scroll position to the new list bounds.
+  Manual flicking, wheel scrolling, and scrollbar dragging take precedence over
+  pending refresh restoration. Scrolling does not clear selection or pull an
+  offscreen selected row back into view. Keyboard/controller selection movement
+  and explicit sorting still reveal the selected row.
+  Clear selection only when the final result is empty. Explicit source or
+  search/genre changes may reset to the beginning; sorting keeps the selected
+  track visible at its new position.
 - Double-tap is retained only as an optional shortcut for loading the selected
   track into Mixxx's next available deck.
 - A 48-pixel-high text input filters title, artist, genre, comment, and key with
-  a short debounce. It replaces both the global Search navigation button and
-  the selected-track/load toolbar above the browser.
+  a short debounce. Filtering and genre collection use cached metadata, so
+  scanning a crate does not create full Track objects for all its rows. It
+  replaces both the global Search navigation button and the selected-track/load
+  toolbar above the browser.
 - Key labels follow the current Key Notation preference immediately, including
   while Browse is hidden. Key searches use that same notation and refresh when
   it changes, retaining a still-matching selection without resetting scrolling
@@ -335,9 +351,24 @@ query, sort, selected row, and scroll position without rebuilding the model.
   selects that row, loads it into Preview Deck 1, and starts playback when the
   active model advertises preview-deck loading support.
 - A 48-pixel-high source button to the right of search opens a centered modal
-  tree. Activating an available source replaces the track model and keeps the
-  search filter local to that model. Current Mixxx QML exposes only All Tracks;
-  playlist, crate, and other source wrappers remain upstream follow-up work.
+  tree populated from Mixxx's live sidebar, including crates, dynamic crates,
+  playlists, and history. Category taps expand/collapse; tapping Tracks also
+  activates the full library. Leaf taps activate the core source and close the
+  popup. Lazy children load on expansion, and current-source highlighting
+  follows the tree selection, including core selection requests. Switching
+  sources starts a fresh list: clear search text, genre filters, selection,
+  swipe actions, and pending scroll restoration; reset sorting to Genre
+  ascending when supported and start at the first track. Recreate the filtered
+  list after the core source switch rather than carrying old groups/delegates
+  into the new crate. Deck/preview loading must not request a sort or source
+  reset. Sources that require a legacy
+  widget page do not render that page in this skin; their activation leaves the
+  previous track data visible. Requires Mixxx's `feature/qml-library-sidebar`
+  APIs.
+- Source and genre popups block clicks, taps, and scroll input from reaching the
+  UI underneath, including their headers and empty areas. Outside clicks/taps
+  dismiss on release; the dismissing gesture cannot activate a lower control.
+  Popup lists remain scrollable, and Escape still closes them.
 
 ## Third Implementation Slice: Performance Waveforms
 
