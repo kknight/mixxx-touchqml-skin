@@ -33,15 +33,17 @@ Rectangle {
     readonly property bool canLoadToPreviewDeck: numPreviewDecksControl.value > 0 && root.hasCapabilities(Mixxx.LibraryTrackListModel.Capability.LoadToPreviewDeck)
     readonly property bool canSort: root.hasCapabilities(Mixxx.LibraryTrackListModel.Capability.Sorting)
 
-    function applySearchFilter() {
+    function applySearchFilter(resetSelection = true) {
         if (root.trackModel === null) {
             return;
         }
         if (root.openSwipeRow) {
             root.openSwipeRow.closeMenu();
         }
-        root.selectedUrl = "";
-        root.selectedListIndex = -1;
+        if (resetSelection) {
+            root.selectedUrl = "";
+            root.selectedListIndex = -1;
+        }
         root.refreshAvailableGenres();
         const query = searchField.text.trim().toLocaleLowerCase();
         const genreFilter = root.selectedGenreFilter.toLocaleLowerCase();
@@ -49,12 +51,17 @@ Rectangle {
             const entry = filteredTrackModel.items.get(i);
             const track = entry.model.track;
             const genre = String(track?.genre || "").trim();
-            const searchableText = [track?.title, track?.artist, track?.genre, track?.comment, track?.keyText].map(value => String(value || "")).join(" ").toLocaleLowerCase();
+            const searchableText = [track?.title, track?.artist, track?.genre, track?.comment, root.formattedKey(track)].map(value => String(value || "")).join(" ").toLocaleLowerCase();
             const genreMatches = genreFilter.length === 0 || genre.toLocaleLowerCase() === genreFilter;
             entry.inSearchResults = genreMatches && (query.length === 0 || searchableText.includes(query));
         }
-        trackList.positionViewAtBeginning();
+        if (resetSelection) {
+            trackList.positionViewAtBeginning();
+        }
         Qt.callLater(root.ensureSelection);
+    }
+    function formattedKey(track) {
+        return Mixxx.KeyUtils.keyToString(track?.numericKey || 0, keyNotationControl.value);
     }
     function hasCapabilities(capabilities) {
         return (root.modelCapabilities & capabilities) === capabilities;
@@ -237,6 +244,18 @@ Rectangle {
         Mixxx.LibraryAllTrackSource {
             columns: sourceTree.defaultColumns
             label: qsTr("All Tracks")
+        }
+    }
+    Mixxx.ControlProxy {
+        id: keyNotationControl
+
+        group: "[Library]"
+        key: "key_notation"
+
+        onValueChanged: {
+            if (searchField.text.trim().length > 0) {
+                root.applySearchFilter(false);
+            }
         }
     }
     Mixxx.ControlProxy {
@@ -441,6 +460,7 @@ Rectangle {
             id: visualTrackRow
 
             commentColumnWidth: root.commentColumnWidth
+            displayKey: root.formattedKey(visualTrackRow.track)
             durationColumnWidth: root.durationColumnWidth
             genreColumnWidth: root.genreColumnWidth
             keyColumnWidth: root.keyColumnWidth

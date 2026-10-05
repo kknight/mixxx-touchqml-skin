@@ -360,8 +360,14 @@ The current components are:
 - `BrowseView`: a touch-native all-tracks list backed by
   `Mixxx.LibrarySourceTree`/`LibraryTrackListModel`. Its visible columns show
   track/artist, rating, genre, comment, key, and duration, using live properties
-  from each QML track proxy. The input above the columns filters those fields
-  through a debounced `DelegateModel` group. Tapping selects a track, and
+  from each QML track proxy. Key labels format `numericKey` with
+  `KeyUtils.keyToString()` and the live `[Library],key_notation` control,
+  because the track proxy's `keyText` notification covers track edits but not
+  notation preference changes. Labels update without reopening Browse or
+  restarting Mixxx. Active text searches use the same formatted key and are
+  reapplied on notation changes, retaining selection if it still matches and
+  avoiding an explicit scroll reset. The input above the columns filters those
+  fields through a debounced `DelegateModel` group. Tapping selects a track, and
   starting a left drag selects it before revealing two 96-pixel-wide
   `Load 1`/`Load 2` actions. Those actions call
   `Player.loadTrackFromLocationUrl()`; double-tapping remains an optional next-

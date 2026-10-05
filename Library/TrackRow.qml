@@ -11,6 +11,7 @@ Item {
     readonly property real actionWidth: 192
     required property int commentColumnWidth
     required property url cover_art
+    required property string displayKey
     property real dragStartX: 0
     required property int durationColumnWidth
     required property url file_url
@@ -203,7 +204,7 @@ Item {
             MetadataValue {
                 Layout.preferredWidth: root.keyColumnWidth
                 color: root.keyColor(root.track?.numericKey || 0)
-                text: root.track?.keyText || "--"
+                text: root.displayKey || "--"
             }
             MetadataValue {
                 Layout.preferredWidth: root.durationColumnWidth

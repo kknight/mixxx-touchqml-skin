@@ -305,6 +305,10 @@ query, sort, selected row, and scroll position without rebuilding the model.
 - A 48-pixel-high text input filters title, artist, genre, comment, and key with
   a short debounce. It replaces both the global Search navigation button and
   the selected-track/load toolbar above the browser.
+- Key labels follow the current Key Notation preference immediately, including
+  while Browse is hidden. Key searches use that same notation and refresh when
+  it changes, retaining a still-matching selection without resetting scrolling
+  to the beginning.
 - A 320-pixel compact preview control sits left of search when a preview deck is
   available. It contains a 48-pixel play/pause target and a seekable full-track
   RGB waveform for Preview Deck 1. Holding a track row for 500 milliseconds
