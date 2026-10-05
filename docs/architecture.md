@@ -331,7 +331,12 @@ The current components are:
   renderer's `defaultMark` creates native hotcue marks, preserving each cue's
   number, saved label, stored color, type, and end position. Saved-loop hotcues
   therefore show their range and endpoint. Main cue and active-loop marks remain
-  explicit. Intro/outro ranges and both endpoints follow the persistent
+  explicit in a separate mark renderer, alongside intro/outro endpoints. This
+  avoids the core marker-set priority collision between the first explicit
+  mark and Hotcue 1 when they share a position. The native-hotcue renderer
+  owns the playhead and next-hotcue readout; the explicit-marker renderer has
+  a transparent playhead and no next-marker readout.
+  Intro/outro ranges and both endpoints follow the persistent
   TouchQML-owned `[Skin],show_intro_outro_cues` control. Blue and green 3-pixel
   left accents identify Deck 1 and Deck 2 respectively. The white playhead sits
   at one third of the waveform width, leaving two thirds for upcoming audio.

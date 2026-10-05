@@ -104,6 +104,13 @@ Rectangle {
                 text: " %1 "
                 textColor: TouchTheme.primaryText.toString()
             }
+        }
+        Mixxx.WaveformRendererMark {
+            playMarkerBackground: "transparent"
+            playMarkerColor: "transparent"
+            playMarkerPosition: TouchTheme.mainWaveformPlayMarkerPosition
+            untilMark.showBeats: false
+            untilMark.showTime: false
 
             Mixxx.WaveformMark {
                 align: "top|right"

@@ -390,6 +390,9 @@ remaining space reserved for later transport, pad, and mixer slices.
   colors, and saved-loop ranges/endpoints stay synchronized with Mixxx. Show the
   main cue and active-loop boundaries explicitly. Show both intro and outro
   endpoints and ranges only while `[Skin],show_intro_outro_cues` is active.
+  Keep native hotcues and explicit CUE/loop/intro/outro markers in separate
+  renderer sets so a hotcue at the same position cannot remove a fixed marker.
+  Render the playhead and next-hotcue readout only once.
 - Markers outside the current scrolling-waveform time window are not represented
   by edge indicators.
 - Bind zoom to each deck's `waveform_zoom` control and honor Mixxx's synchronized
