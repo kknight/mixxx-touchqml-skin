@@ -187,6 +187,10 @@ to the right-deck color at the same `deckSplitX` coordinate.
 
 ### `NavigationBar`
 
+Settings uses an icon-only cog button immediately left of the clock, with a
+48 × 48 logical-pixel target, an accessible Settings name, and active-page
+feedback.
+
 - Fixed height: 48 logical pixels, including its bottom accent rule.
 - Left-aligned primary destinations: Browse, Touch FX, and Samples using their
   existing Mixxx view controls.

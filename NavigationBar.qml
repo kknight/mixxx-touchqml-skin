@@ -129,6 +129,22 @@ Item {
                 verticalAlignment: Text.AlignVCenter
             }
         }
+        Controls.NavigationButton {
+            active: settingsViewControl.value > 0
+            height: parent.height
+            iconSource: Qt.resolvedUrl("Icons/settings.svg")
+            label: qsTr("Settings")
+            showLabel: false
+            width: TouchTheme.minimumTouchSize
+
+            onTriggered: {
+                const opening = settingsViewControl.value <= 0;
+                libraryViewControl.value = 0;
+                effectsViewControl.value = 0;
+                samplesViewControl.value = 0;
+                settingsViewControl.value = opening ? 1 : 0;
+            }
+        }
         Item {
             height: parent.height
             visible: Mixxx.Battery.isBatteryAvailable
@@ -156,21 +172,6 @@ Item {
                     text: Math.round(Mixxx.Battery.percentage) + "%"
                     verticalAlignment: Text.AlignVCenter
                 }
-            }
-        }
-        Controls.NavigationButton {
-            active: settingsViewControl.value > 0
-            height: parent.height
-            iconSource: ""
-            label: qsTr("Settings")
-            width: 108
-
-            onTriggered: {
-                const opening = settingsViewControl.value <= 0;
-                libraryViewControl.value = 0;
-                effectsViewControl.value = 0;
-                samplesViewControl.value = 0;
-                settingsViewControl.value = opening ? 1 : 0;
             }
         }
         Controls.NavigationButton {

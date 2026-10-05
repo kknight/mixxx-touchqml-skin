@@ -294,8 +294,9 @@ even widths.
 
 The current components are:
 
-- `NavigationBar`: Browse, Touch FX, Samples, recording, battery, and clock
-  presentation.
+- `NavigationBar`: Browse, Touch FX, Samples, recording, battery, Settings, and
+  clock presentation. Settings uses an original cog icon in a 48-pixel target
+  immediately left of the clock, retaining its accessible name and active state.
   Its original monochrome SVG assets occupy consistent 24-pixel icon boxes so
   icons and labels share a visual centerline. Browse, Touch FX, and Samples use
   existing core-owned `[Skin]` controls and load mutually exclusive pages below

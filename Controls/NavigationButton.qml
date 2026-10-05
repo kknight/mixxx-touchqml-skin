@@ -7,6 +7,11 @@ Rectangle {
     property bool active: false
     property url iconSource
     required property string label
+    property bool showLabel: true
+
+    Accessible.role: Accessible.Button
+    Accessible.name: root.label
+    Accessible.onPressAction: root.triggered()
 
     signal triggered
 
@@ -38,6 +43,7 @@ Rectangle {
             font.weight: Font.DemiBold
             height: TouchTheme.navigationIconSize
             text: root.label
+            visible: root.showLabel && root.label.length > 0
             verticalAlignment: Text.AlignVCenter
         }
     }
