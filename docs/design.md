@@ -418,10 +418,15 @@ highlight their top/bottom edges with the deck accent.
   feedback. Selection and toggling must require no hover, right click, or mouse
   wheel.
 
-## Vinyl Settings
+## Settings
 
 Settings opens below the persistent header through core-owned
-`[Skin],show_settings`. It presents one touch panel per deck with 48-pixel
+`[Skin],show_settings`. A top row exposes the shared Mixxx "Start in fullscreen"
+preference with a 48-pixel On/Off target and a note that it applies the next
+time Mixxx starts. Startup follows this preference once core initialization
+is complete; changing it does not change the current window state.
+The page scrolls vertically at smaller heights to keep every control reachable.
+It also presents one touch panel per deck with 48-pixel
 targets for `vinylcontrol_enabled`, `vinylcontrol_mode` (`ABS`, `REL`, `CONST`),
 and `vinylcontrol_cueing` (`OFF`, `ONE`, `HOT`). These controls bind directly to
 existing deck ControlObjects, keeping controller and engine behavior shared.

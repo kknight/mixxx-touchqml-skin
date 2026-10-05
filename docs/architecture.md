@@ -276,8 +276,10 @@ Total           208
 ```
 
 `main.qml` first shows a startup screen, then loads `TouchMainWindow.qml` only
-after `Mixxx.Core.ready`. `TouchMainWindow.qml` keeps NavigationBar and
-DeckStatus persistent, then uses a
+after `Mixxx.Core.ready`. Once core is ready, the root window reads
+`Mixxx.Config.configStartInFullscreenKey` and starts fullscreen or windowed
+accordingly, including after QML auto-reload. `TouchMainWindow.qml` keeps
+NavigationBar and DeckStatus persistent, then uses a
 `StackLayout` for everything below them. Performance, Browse, Touch FX, and
 Samples pages remain instantiated while hidden. This preserves browser source,
 filter, sort, selection, and scroll state and avoids rebuilding its model on
@@ -437,8 +439,11 @@ The current components are:
 - `EffectRackView` and `SampleRackView`: empty page placeholders selected by the
   core-owned `[Skin],show_effectrack` and `[Skin],show_samplers` controls.
 - `SettingsView`: selected by core-owned `[Skin],show_settings`; it exposes
-  touch controls for both decks' vinyl-control enable state, tracking mode
+  a touch toggle for Mixxx's shared `configStartInFullscreenKey` preference,
+  applied on the next startup, and touch controls for both decks'
+  vinyl-control enable state, tracking mode
   (`ABS`, `REL`, `CONST`), and relative cueing mode (`OFF`, `ONE`, `HOT`).
+  Settings scrolls vertically when its controls exceed the available height.
 - `TouchTheme`: the fixed layout metrics, touch size, colors, and typography
   shared by the first slice.
 

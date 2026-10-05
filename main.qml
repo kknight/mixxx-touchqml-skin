@@ -2,6 +2,7 @@ import "Theme"
 import Mixxx 1.0 as Mixxx
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Window
 
 ApplicationWindow {
     id: root
@@ -13,6 +14,15 @@ ApplicationWindow {
     minimumWidth: 1024
     title: qsTr("Touch QML")
     visible: true
+
+    function updateVisibility() {
+        if (!Mixxx.Core.ready) {
+            return;
+        }
+        root.visibility = Mixxx.Config.configStartInFullscreenKey
+                ? Window.FullScreen
+                : Window.Windowed;
+    }
 
     function updateProgress() {
         if (!Mixxx.Core.ready) {
@@ -42,6 +52,7 @@ ApplicationWindow {
         }
         function onReadyChanged() {
             root.updateProgress();
+            root.updateVisibility();
         }
     }
 
@@ -79,5 +90,8 @@ ApplicationWindow {
         }
     }
 
-    Component.onCompleted: updateProgress()
+    Component.onCompleted: {
+        updateProgress();
+        updateVisibility();
+    }
 }
