@@ -393,7 +393,9 @@ remaining space reserved for later transport, pad, and mixer slices.
 - Markers outside the current scrolling-waveform time window are not represented
   by edge indicators.
 - Bind zoom to each deck's `waveform_zoom` control and honor Mixxx's synchronized
-  waveform-zoom preference.
+  waveform-zoom preference. Initialize the owning zoom control from Mixxx's
+  default waveform zoom preference and apply subsequent preference changes;
+  secondary synchronized waveforms share Deck 1's control without resetting it.
 - Main waveforms are display-only in this slice. Do not copy the upstream mouse
   scratching, right-button bending, or wheel-zoom handlers into the touch UI.
 - Keep pages instantiated to preserve Browse state and avoid model reloads.
@@ -461,6 +463,11 @@ preference with a 48-pixel On/Off target and a note that it applies the next
 time Mixxx starts. Startup follows this preference once core initialization
 is complete; changing it does not change the current window state.
 The page scrolls vertically at smaller heights to keep every control reachable.
+Waveform zoom sliders apply immediately through the standard deck controls and
+follow changes from the controller. Moving right zooms in; moving left zooms
+out. Synchronized zoom presents one slider for both decks; independent zoom
+presents separate Deck 1 and Deck 2 sliders. Each slider has a 48-pixel-high
+touch target and a square handle with its deck accent.
 It also presents one touch panel per deck with 48-pixel
 targets for `vinylcontrol_enabled`, `vinylcontrol_mode` (`ABS`, `REL`, `CONST`),
 and `vinylcontrol_cueing` (`OFF`, `ONE`, `HOT`). These controls bind directly to

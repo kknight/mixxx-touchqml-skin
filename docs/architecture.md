@@ -337,6 +337,12 @@ The current components are:
   at one third of the waveform width, leaving two thirds for upcoming audio.
   Markers appear only while their positions are inside the visible scrolling
   window.
+  Zoom binds to the deck's core `waveform_zoom` control, or Deck 1's control
+  when synchronized waveform zoom is enabled. Each owning deck initializes
+  its control from `Mixxx.Config.waveformDefaultZoom` and follows changes to
+  that preference, matching LateNightQML. This avoids starting at the core's
+  value of 1, which is already the maximum zoom-in level. Controller zoom
+  changes then flow directly into the renderer.
 - `DeckHotcueGrid`: a full-width 32-pixel strip of eight equal buttons. Deck 1's
   strip sits 2 pixels above its waveform; Deck 2's sits 2 pixels below. Buttons
   have 2-pixel gaps, no outer padding or outlines, a neutral dark-gray
@@ -492,6 +498,10 @@ The current components are:
   vinyl-control enable state, tracking mode
   (`ABS`, `REL`, `CONST`), and relative cueing mode (`OFF`, `ONE`, `HOT`).
   Settings scrolls vertically when its controls exceed the available height.
+  A waveform zoom panel writes the live core `waveform_zoom` controls, with
+  one slider for both waveforms when synchronized zoom is enabled and one per
+  deck otherwise. Slider position increases toward zoom-in by reversing the
+  core's 1–10 scale. Control bindings also reflect controller-driven changes.
 - `TouchTheme`: the fixed layout metrics, touch size, colors, and typography
   shared by the first slice.
 

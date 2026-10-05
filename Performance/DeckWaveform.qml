@@ -18,6 +18,21 @@ Rectangle {
 
         group: root.zoomGroup
         key: "waveform_zoom"
+
+        Component.onCompleted: {
+            if (zoomControl.group === root.group) {
+                zoomControl.value = Mixxx.Config.waveformDefaultZoom;
+            }
+        }
+    }
+    Connections {
+        target: Mixxx.Config
+
+        function onWaveformDefaultZoomChanged() {
+            if (zoomControl.group === root.group) {
+                zoomControl.value = Mixxx.Config.waveformDefaultZoom;
+            }
+        }
     }
     MixxxControls.WaveformDisplay {
         anchors.fill: parent
