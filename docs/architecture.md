@@ -359,8 +359,15 @@ The current components are:
   changing the slot or chain enabled state.
 - `BrowseView`: a touch-native all-tracks list backed by
   `Mixxx.LibrarySourceTree`/`LibraryTrackListModel`. Its visible columns show
-  track/artist, rating, genre, comment, key, and duration, using live properties
-  from each QML track proxy. Key labels format `numericKey` with
+  track/artist, Genre, Comment, BPM, Rating, Key, Time, and Last, in that order.
+  Metadata comes from live QML track properties; BPM and Last Played use
+  `LibraryTrackListModel.data()` with `Qt.DisplayRole` for Mixxx's localized
+  tempo precision and date formatting. `DelegateModel.modelIndex()` maps
+  filtered row indices back to model rows. Model data/layout/reset signals and
+  the BPM precision preference invalidate these display values. Missing values
+  use `--`. Genre, Comment, Rating, and Last widths scale within fixed bounds
+  across supported landscape widths, leaving Title/Artist the remaining space.
+  Key labels format `numericKey` with
   `KeyUtils.keyToString()` and the live `[Library],key_notation` control,
   because the track proxy's `keyText` notification covers track edits but not
   notation preference changes. Labels update without reopening Browse or
@@ -385,10 +392,13 @@ The current components are:
   values plus an All Genres option. The selected exact, case-insensitive genre
   filter combines with text search and persists while Browse remains
   instantiated. Loading is likewise enabled only when the model advertises
-  deck-loading support. Rating, genre, comment, and duration use the verified
-  current `ColumnCache` IDs because `TrackListColumn.SQLColumns` does not expose
-  those fields yet. Persistent page ownership also preserves ListView position
-  while Browse is hidden. A compact Preview Deck 1 control sits left of search:
+  deck-loading support. Rating, genre, comment, duration, and Last Played use
+  the verified current `ColumnCache` IDs because `TrackListColumn.SQLColumns` does not expose
+  those fields yet; BPM uses its named `Bpm` enum. Rating is column ID 26 and
+  Last Played is 41 in the current checkout. All eight headers sort their
+  corresponding model column; Genre remains the initial ascending sort.
+  Persistent page ownership also preserves ListView position while Browse is
+  hidden. A compact Preview Deck 1 control sits left of search:
   its play/pause button drives the standard preview-deck play control, and its
   full-track RGB overview shows playback position and supports touch seeking.
   Holding a load-capable track row for 500 milliseconds selects it, loads it

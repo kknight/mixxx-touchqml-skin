@@ -9,15 +9,19 @@ Item {
     id: root
 
     readonly property real actionWidth: 192
+    required property int bpmColumnWidth
     required property int commentColumnWidth
     required property url cover_art
+    required property string displayBpm
     required property string displayKey
+    required property string displayLastPlayed
     property real dragStartX: 0
     required property int durationColumnWidth
     required property url file_url
     required property int genreColumnWidth
     required property int index
     required property int keyColumnWidth
+    required property int lastPlayedColumnWidth
     required property bool loadEnabled
     required property int loaded_deck_mask
     property bool menuOpen: false
@@ -190,16 +194,20 @@ Item {
                 }
             }
             MetadataValue {
-                Layout.preferredWidth: root.ratingColumnWidth
-                text: root.track && root.track.stars > 0 ? root.track.stars + "/5" : "--"
-            }
-            MetadataValue {
                 Layout.preferredWidth: root.genreColumnWidth
                 text: root.track?.genre || "--"
             }
             MetadataValue {
                 Layout.preferredWidth: root.commentColumnWidth
                 text: root.track?.comment || "--"
+            }
+            MetadataValue {
+                Layout.preferredWidth: root.bpmColumnWidth
+                text: root.displayBpm || "--"
+            }
+            MetadataValue {
+                Layout.preferredWidth: root.ratingColumnWidth
+                text: root.track && root.track.stars > 0 ? root.track.stars + "/5" : "--"
             }
             MetadataValue {
                 Layout.preferredWidth: root.keyColumnWidth
@@ -211,6 +219,10 @@ Item {
                 color: TouchTheme.secondaryText
                 horizontalAlignment: Text.AlignRight
                 text: root.durationText(root.track?.duration || 0)
+            }
+            MetadataValue {
+                Layout.preferredWidth: root.lastPlayedColumnWidth
+                text: root.displayLastPlayed || "--"
             }
         }
         TapHandler {

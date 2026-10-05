@@ -10,21 +10,25 @@ import QtQuick.Layouts
 Rectangle {
     id: root
 
-    readonly property int commentColumnWidth: 190
-    readonly property int durationColumnWidth: 60
     property var availableGenres: []
-    readonly property int genreColumnWidth: 120
-    readonly property int keyColumnWidth: 48
+    readonly property int bpmColumnWidth: 64
+    readonly property real columnWidthProgress: Math.max(0, Math.min(1, (width - 1024) / 896))
+    readonly property int commentColumnWidth: 140 + Math.round(50 * root.columnWidthProgress)
+    readonly property int durationColumnWidth: 60
+    readonly property int genreColumnWidth: 96 + Math.round(24 * root.columnWidthProgress)
+    readonly property int keyColumnWidth: 64
+    readonly property int lastPlayedColumnWidth: 96 + Math.round(16 * root.columnWidthProgress)
     readonly property int libraryViewFocus: 3
+    property int metadataRevision: 0
     readonly property var modelCapabilities: root.trackModel ? root.trackModel.getCapabilities() : Mixxx.LibraryTrackListModel.Capability.None
     property var openSwipeRow: null
     readonly property string previewDeckGroup: "[PreviewDeck1]"
-    readonly property int ratingColumnWidth: 72
+    readonly property int ratingColumnWidth: 64 + Math.round(8 * root.columnWidthProgress)
     property int selectedListIndex: -1
     property string selectedGenreFilter: ""
     property string selectedSourceLabel: qsTr("All Tracks")
     property url selectedUrl
-    property int sortColumn: 2
+    property int sortColumn: 1
     property int sortOrder: Qt.AscendingOrder
     property var sourceModel: null
     property var trackModel: null
@@ -59,6 +63,22 @@ Rectangle {
             trackList.positionViewAtBeginning();
         }
         Qt.callLater(root.ensureSelection);
+    }
+    function columnValue(row, column, role) {
+        if (!root.trackModel || row < 0) {
+            return undefined;
+        }
+        const modelIndex = filteredTrackModel.modelIndex(row);
+        if (!modelIndex.valid) {
+            return undefined;
+        }
+        return root.trackModel.data(root.trackModel.index(modelIndex.row, column), role);
+    }
+    // Model methods do not notify bindings; revision and URL arguments refresh
+    // values after metadata/layout changes and when a pooled row is reused.
+    function columnText(row, column, _revision, _fileUrl) {
+        const value = root.columnValue(row, column, Qt.DisplayRole);
+        return value === undefined || value === null || value === "-" ? "" : String(value);
     }
     function formattedKey(track) {
         return Mixxx.KeyUtils.keyToString(track?.numericKey || 0, keyNotationControl.value);
@@ -219,10 +239,6 @@ Rectangle {
                 label: qsTr("Title")
             },
             Mixxx.TrackListColumn {
-                columnIdx: 25 // ColumnCache::COLUMN_LIBRARYTABLE_RATING
-                label: qsTr("Rating")
-            },
-            Mixxx.TrackListColumn {
                 columnIdx: 6 // ColumnCache::COLUMN_LIBRARYTABLE_GENRE
                 label: qsTr("Genre")
             },
@@ -231,12 +247,24 @@ Rectangle {
                 label: qsTr("Comment")
             },
             Mixxx.TrackListColumn {
+                columnIdx: Mixxx.TrackListColumn.SQLColumns.Bpm
+                label: qsTr("BPM")
+            },
+            Mixxx.TrackListColumn {
+                columnIdx: 26 // ColumnCache::COLUMN_LIBRARYTABLE_RATING
+                label: qsTr("Rating")
+            },
+            Mixxx.TrackListColumn {
                 columnIdx: Mixxx.TrackListColumn.SQLColumns.Key
                 label: qsTr("Key")
             },
             Mixxx.TrackListColumn {
                 columnIdx: 12 // ColumnCache::COLUMN_LIBRARYTABLE_DURATION
-                label: qsTr("Duration")
+                label: qsTr("Time")
+            },
+            Mixxx.TrackListColumn {
+                columnIdx: 41 // ColumnCache::COLUMN_LIBRARYTABLE_LAST_PLAYED_AT
+                label: qsTr("Last")
             }
         ]
         // qmllint enable unresolved-type
@@ -429,6 +457,26 @@ Rectangle {
 
         target: root.sourceModel
     }
+    Connections {
+        target: root.trackModel
+
+        function onDataChanged() {
+            root.metadataRevision++;
+        }
+        function onLayoutChanged() {
+            root.metadataRevision++;
+        }
+        function onModelReset() {
+            root.metadataRevision++;
+        }
+    }
+    Connections {
+        target: Mixxx.Config
+
+        function onLibraryBpmColumnPrecisionChanged() {
+            root.metadataRevision++;
+        }
+    }
     Timer {
         id: searchFilterTimer
 
@@ -459,11 +507,15 @@ Rectangle {
         delegate: TrackRow {
             id: visualTrackRow
 
+            bpmColumnWidth: root.bpmColumnWidth
             commentColumnWidth: root.commentColumnWidth
+            displayBpm: root.columnText(visualTrackRow.index, 3, root.metadataRevision, visualTrackRow.file_url)
             displayKey: root.formattedKey(visualTrackRow.track)
+            displayLastPlayed: root.columnText(visualTrackRow.index, 7, root.metadataRevision, visualTrackRow.file_url)
             durationColumnWidth: root.durationColumnWidth
             genreColumnWidth: root.genreColumnWidth
             keyColumnWidth: root.keyColumnWidth
+            lastPlayedColumnWidth: root.lastPlayedColumnWidth
             loadEnabled: root.canLoadToDeck
             previewEnabled: root.canLoadToPreviewDeck
             ratingColumnWidth: root.ratingColumnWidth
@@ -636,13 +688,8 @@ Rectangle {
                 label: qsTr("TRACK")
             }
             ColumnHeader {
-                Layout.preferredWidth: root.ratingColumnWidth
-                columnIndex: 1
-                label: qsTr("RATING")
-            }
-            ColumnHeader {
                 Layout.preferredWidth: root.genreColumnWidth
-                columnIndex: 2
+                columnIndex: 1
                 highlighted: root.selectedGenreFilter.length > 0
                 holdEnabled: root.trackModel !== null
                 label: qsTr("GENRE")
@@ -654,19 +701,34 @@ Rectangle {
             }
             ColumnHeader {
                 Layout.preferredWidth: root.commentColumnWidth
-                columnIndex: 3
+                columnIndex: 2
                 label: qsTr("COMMENT")
             }
             ColumnHeader {
-                Layout.preferredWidth: root.keyColumnWidth
+                Layout.preferredWidth: root.bpmColumnWidth
+                columnIndex: 3
+                label: qsTr("BPM")
+            }
+            ColumnHeader {
+                Layout.preferredWidth: root.ratingColumnWidth
                 columnIndex: 4
+                label: qsTr("RATING")
+            }
+            ColumnHeader {
+                Layout.preferredWidth: root.keyColumnWidth
+                columnIndex: 5
                 label: qsTr("KEY")
             }
             ColumnHeader {
                 Layout.preferredWidth: root.durationColumnWidth
-                columnIndex: 5
+                columnIndex: 6
                 horizontalAlignment: Text.AlignRight
                 label: qsTr("TIME")
+            }
+            ColumnHeader {
+                Layout.preferredWidth: root.lastPlayedColumnWidth
+                columnIndex: 7
+                label: qsTr("LAST")
             }
         }
         Rectangle {

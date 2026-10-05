@@ -277,7 +277,7 @@ remain instantiated in a `StackLayout`, so reopening Browse restores its source,
 query, sort, selected row, and scroll position without rebuilding the model.
 
 - Track rows are 56 logical pixels high and support touch flicking.
-- The browser aligns track/artist, rating, genre, comment, key, and duration
+- The browser aligns Title/Artist, Genre, Comment, BPM, Rating, Key, Time, Last
   under a persistent 48-pixel sortable column header. Tapping a header sorts
   ascending; tapping it again reverses order. Initial order is Genre ascending.
   Holding Genre for 500 milliseconds opens a single-select popup of unique
@@ -285,6 +285,11 @@ query, sort, selected row, and scroll position without rebuilding the model.
   combines with text search. The Genre header uses the Sync Lead color while a
   filter is active without replacing its label. Long text elides within its
   column.
+- BPM follows Mixxx's library tempo precision and locale. Last displays the
+  localized last-played date, with `--` for a track that has never been played.
+  Genre, Comment, Rating, and Last widths grow within bounded ranges from
+  1024 to 1920 pixels; all columns remain visible and Title/Artist fills the
+  remaining space. Headers and rows use identical widths and gaps.
 - A tap selects a track. Starting a left drag selects that track as well, before
   the row begins revealing its actions.
 - Dragging a row left reveals a 192-pixel action pane containing 96-pixel-wide
