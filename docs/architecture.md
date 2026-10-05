@@ -369,7 +369,11 @@ The current components are:
   Mixxx's Grey out played tracks preference to the actual played flag (not
   Last Played or load state). The override covers title, artist, and every
   metadata column, including Key; without it, normal theme/key colors apply.
-  Selection backgrounds, artwork, and load indicators remain distinct. Model
+  Selection backgrounds, artwork, and load indicators remain distinct. The
+  three-pixel left strip is blue for Deck 1, green for Deck 2, and orange for
+  Preview Deck 1, with that precedence when loaded in multiple players. Other
+  rows use `libraryRowSelectedBackground` for the strip, so selection alone
+  never gets a deck accent and the strip blends into a selected row. Model
   signals refresh the color after played-state changes. Since the preference
   has no QML property or change notification, a one-second timer rechecks
   foreground colors only while Browse is visible; reopening Browse also

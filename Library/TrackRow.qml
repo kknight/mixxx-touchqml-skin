@@ -78,7 +78,7 @@ Item {
         if (preview_deck_loaded) {
             return TouchTheme.previewAccent;
         }
-        return root.selected ? TouchTheme.deck1Accent : "transparent";
+        return TouchTheme.libraryRowSelectedBackground;
     }
 
     clip: true

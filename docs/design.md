@@ -299,6 +299,10 @@ query, sort, selected row, and scroll position without rebuilding the model.
   while Browse is visible and immediately when it is reopened.
 - A tap selects a track. Starting a left drag selects that track as well, before
   the row begins revealing its actions.
+- Reserve the three-pixel left strip's blue, green, and orange accents for
+  tracks loaded in Deck 1, Deck 2, and Preview Deck 1 respectively. Other rows
+  use the selected-row background color for their strip; selection alone has
+  no blue accent and its strip blends into the selected background.
 - Dragging a row left reveals a 192-pixel action pane containing 96-pixel-wide
   `Load 1` and `Load 2` targets. The row snaps open after crossing its threshold,
   only one row remains open, and recycled rows reset to the closed position.
