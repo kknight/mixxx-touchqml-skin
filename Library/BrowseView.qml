@@ -10,6 +10,7 @@ import QtQuick.Layouts
 Rectangle {
     id: root
 
+    property int appearanceRevision: 0
     property var availableGenres: []
     readonly property int bpmColumnWidth: 64
     readonly property real columnWidthProgress: Math.max(0, Math.min(1, (width - 1024) / 896))
@@ -79,6 +80,9 @@ Rectangle {
     function columnText(row, column, _revision, _fileUrl) {
         const value = root.columnValue(row, column, Qt.DisplayRole);
         return value === undefined || value === null || value === "-" ? "" : String(value);
+    }
+    function rowForeground(row, _metadataRevision, _appearanceRevision, _fileUrl) {
+        return root.columnValue(row, 0, Qt.ForegroundRole);
     }
     function formattedKey(track) {
         return Mixxx.KeyUtils.keyToString(track?.numericKey || 0, keyNotationControl.value);
@@ -218,6 +222,8 @@ Rectangle {
     }
 
     color: TouchTheme.libraryBackground
+
+    onVisibleChanged: root.appearanceRevision++
 
     Component.onCompleted: {
         root.sourceModel = sourceTree.sidebar();
@@ -478,6 +484,15 @@ Rectangle {
         }
     }
     Timer {
+        // ApplyPlayedTrackColor has no QML property or notification. Re-read
+        // the model's foreground role while visible to pick up preferences.
+        interval: 1000
+        repeat: true
+        running: root.visible && root.trackModel !== null
+
+        onTriggered: root.appearanceRevision++
+    }
+    Timer {
         id: searchFilterTimer
 
         interval: 120
@@ -513,6 +528,7 @@ Rectangle {
             displayKey: root.formattedKey(visualTrackRow.track)
             displayLastPlayed: root.columnText(visualTrackRow.index, 7, root.metadataRevision, visualTrackRow.file_url)
             durationColumnWidth: root.durationColumnWidth
+            foregroundColor: root.rowForeground(visualTrackRow.index, root.metadataRevision, root.appearanceRevision, visualTrackRow.file_url)
             genreColumnWidth: root.genreColumnWidth
             keyColumnWidth: root.keyColumnWidth
             lastPlayedColumnWidth: root.lastPlayedColumnWidth

@@ -365,7 +365,16 @@ The current components are:
   tempo precision and date formatting. `DelegateModel.modelIndex()` maps
   filtered row indices back to model rows. Model data/layout/reset signals and
   the BPM precision preference invalidate these display values. Missing values
-  use `--`. Genre, Comment, Rating, and Last widths scale within fixed bounds
+  use `--`. Row text consumes the model's `Qt.ForegroundRole`, which applies
+  Mixxx's Grey out played tracks preference to the actual played flag (not
+  Last Played or load state). The override covers title, artist, and every
+  metadata column, including Key; without it, normal theme/key colors apply.
+  Selection backgrounds, artwork, and load indicators remain distinct. Model
+  signals refresh the color after played-state changes. Since the preference
+  has no QML property or change notification, a one-second timer rechecks
+  foreground colors only while Browse is visible; reopening Browse also
+  refreshes them without rebuilding the model or resetting selection/scroll.
+  Genre, Comment, Rating, and Last widths scale within fixed bounds
   across supported landscape widths, leaving Title/Artist the remaining space.
   Key labels format `numericKey` with
   `KeyUtils.keyToString()` and the live `[Library],key_notation` control,

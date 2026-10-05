@@ -18,7 +18,9 @@ Item {
     property real dragStartX: 0
     required property int durationColumnWidth
     required property url file_url
+    required property var foregroundColor
     required property int genreColumnWidth
+    readonly property bool hasForegroundColor: root.foregroundColor !== undefined && root.foregroundColor !== null
     required property int index
     required property int keyColumnWidth
     required property int lastPlayedColumnWidth
@@ -176,7 +178,7 @@ Item {
                 spacing: 1
 
                 Text {
-                    color: TouchTheme.primaryText
+                    color: root.hasForegroundColor ? root.foregroundColor : TouchTheme.primaryText
                     elide: Text.ElideRight
                     font.family: TouchTheme.fontFamily
                     font.pixelSize: 16
@@ -185,7 +187,7 @@ Item {
                     width: parent.width
                 }
                 Text {
-                    color: TouchTheme.secondaryText
+                    color: root.hasForegroundColor ? root.foregroundColor : TouchTheme.secondaryText
                     elide: Text.ElideRight
                     font.family: TouchTheme.fontFamily
                     font.pixelSize: 13
@@ -211,12 +213,11 @@ Item {
             }
             MetadataValue {
                 Layout.preferredWidth: root.keyColumnWidth
-                color: root.keyColor(root.track?.numericKey || 0)
+                color: root.hasForegroundColor ? root.foregroundColor : root.keyColor(root.track?.numericKey || 0)
                 text: root.displayKey || "--"
             }
             MetadataValue {
                 Layout.preferredWidth: root.durationColumnWidth
-                color: TouchTheme.secondaryText
                 horizontalAlignment: Text.AlignRight
                 text: root.durationText(root.track?.duration || 0)
             }
@@ -299,7 +300,7 @@ Item {
     }
 
     component MetadataValue: Text {
-        color: TouchTheme.secondaryText
+        color: root.hasForegroundColor ? root.foregroundColor : TouchTheme.secondaryText
         elide: Text.ElideRight
         font.family: TouchTheme.fontFamily
         font.pixelSize: 13

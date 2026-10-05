@@ -290,6 +290,13 @@ query, sort, selected row, and scroll position without rebuilding the model.
   Genre, Comment, Rating, and Last widths grow within bounded ranges from
   1024 to 1920 pixels; all columns remain visible and Title/Artist fills the
   remaining space. Headers and rows use identical widths and gaps.
+- Honor Mixxx's Grey out played tracks preference using its library-model
+  foreground color for title, artist, and all metadata, including Key. Use
+  the actual played flag, independent of Last Played or loaded-deck indicators.
+  Restore normal theme and key colors when the preference is disabled or the
+  played flag is cleared. Selection, artwork, and load indicators retain
+  their usual appearance. Applied preference changes appear within one second
+  while Browse is visible and immediately when it is reopened.
 - A tap selects a track. Starting a left drag selects that track as well, before
   the row begins revealing its actions.
 - Dragging a row left reveals a 192-pixel action pane containing 96-pixel-wide
