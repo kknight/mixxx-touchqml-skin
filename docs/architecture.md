@@ -336,6 +336,8 @@ The current components are:
   mark and Hotcue 1 when they share a position. The native-hotcue renderer
   owns the playhead and next-hotcue readout; the explicit-marker renderer has
   a transparent playhead and no next-marker readout.
+  Fixed markers render first, with native hotcues and the playhead above them
+  so overlapping CUE/loop markers do not obscure hotcue markers.
   Intro/outro ranges and both endpoints follow the persistent
   TouchQML-owned `[Skin],show_intro_outro_cues` control. Blue and green 3-pixel
   left accents identify Deck 1 and Deck 2 respectively. The white playhead sits

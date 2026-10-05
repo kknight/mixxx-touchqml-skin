@@ -91,22 +91,6 @@ Rectangle {
         }
         Mixxx.WaveformRendererMark {
             playMarkerBackground: "transparent"
-            playMarkerColor: TouchTheme.primaryText
-            playMarkerPosition: TouchTheme.mainWaveformPlayMarkerPosition
-            untilMark.align: Qt.AlignBottom
-            untilMark.showBeats: true
-            untilMark.showTime: true
-            untilMark.textSize: 11
-
-            defaultMark: Mixxx.WaveformMark {
-                align: "bottom|center"
-                color: TouchTheme.border.toString()
-                text: " %1 "
-                textColor: TouchTheme.primaryText.toString()
-            }
-        }
-        Mixxx.WaveformRendererMark {
-            playMarkerBackground: "transparent"
             playMarkerColor: "transparent"
             playMarkerPosition: TouchTheme.mainWaveformPlayMarkerPosition
             untilMark.showBeats: false
@@ -161,6 +145,22 @@ Rectangle {
                 control: "outro_end_position"
                 textColor: TouchTheme.primaryText.toString()
                 visibilityControl: "[Skin],show_intro_outro_cues"
+            }
+        }
+        Mixxx.WaveformRendererMark {
+            playMarkerBackground: "transparent"
+            playMarkerColor: TouchTheme.primaryText
+            playMarkerPosition: TouchTheme.mainWaveformPlayMarkerPosition
+            untilMark.align: Qt.AlignBottom
+            untilMark.showBeats: true
+            untilMark.showTime: true
+            untilMark.textSize: 11
+
+            defaultMark: Mixxx.WaveformMark {
+                align: "bottom|center"
+                color: TouchTheme.border.toString()
+                text: " %1 "
+                textColor: TouchTheme.primaryText.toString()
             }
         }
     }

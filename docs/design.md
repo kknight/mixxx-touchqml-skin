@@ -392,6 +392,7 @@ remaining space reserved for later transport, pad, and mixer slices.
   endpoints and ranges only while `[Skin],show_intro_outro_cues` is active.
   Keep native hotcues and explicit CUE/loop/intro/outro markers in separate
   renderer sets so a hotcue at the same position cannot remove a fixed marker.
+  Draw fixed markers underneath hotcues so hotcue colors and labels stay readable.
   Render the playhead and next-hotcue readout only once.
 - Markers outside the current scrolling-waveform time window are not represented
   by edge indicators.
