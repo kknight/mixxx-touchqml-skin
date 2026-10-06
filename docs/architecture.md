@@ -500,6 +500,8 @@ The current components are:
 - `EffectRackView` and `SampleRackView`: empty page placeholders selected by the
   core-owned `[Skin],show_effectrack` and `[Skin],show_samplers` controls.
 - `SettingsView`: selected by core-owned `[Skin],show_settings`; it exposes
+  Preferences and Quit touch buttons calling `Mixxx.PreferencesDialog.show()`
+  and `Qt.quit()`, matching the application-wide keyboard shortcuts, plus
   a touch toggle for Mixxx's shared `configStartInFullscreenKey` preference,
   applied on the next startup, and touch controls for both decks'
   vinyl-control enable state, tracking mode

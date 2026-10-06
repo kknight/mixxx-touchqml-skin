@@ -462,7 +462,11 @@ highlight their top/bottom edges with the deck accent.
 ## Settings
 
 Settings opens below the persistent header through core-owned
-`[Skin],show_settings`. A top row exposes the shared Mixxx "Start in fullscreen"
+`[Skin],show_settings`. The top row has right-aligned Preferences and Quit
+buttons with 160 × 48-pixel targets and a 16-pixel gap. Preferences opens the
+standard Mixxx preferences dialog; Quit requests normal application shutdown,
+matching the existing keyboard shortcuts.
+A row below exposes the shared Mixxx "Start in fullscreen"
 preference with a 48-pixel On/Off target and a note that it applies the next
 time Mixxx starts. Startup follows this preference once core initialization
 is complete; changing it does not change the current window state.

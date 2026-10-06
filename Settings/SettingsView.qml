@@ -36,6 +36,30 @@ Rectangle {
                 Layout.fillWidth: true
                 spacing: 16
 
+                Item {
+                    Layout.fillWidth: true
+                }
+                SettingButton {
+                    Layout.preferredWidth: 160
+                    label: qsTr("Preferences")
+                    Accessible.role: Accessible.Button
+                    Accessible.name: label
+
+                    onTriggered: Mixxx.PreferencesDialog.show()
+                }
+                SettingButton {
+                    Layout.preferredWidth: 160
+                    label: qsTr("Quit")
+                    Accessible.role: Accessible.Button
+                    Accessible.name: label
+
+                    onTriggered: Qt.quit()
+                }
+            }
+            RowLayout {
+                Layout.fillWidth: true
+                spacing: 16
+
                 ColumnLayout {
                     Layout.fillWidth: true
                     spacing: 4
