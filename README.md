@@ -11,13 +11,13 @@ TouchQML currently provides:
 - Per-deck standard and Quick Effect toggles with hold-to-select menus
 - Empty Touch FX and Samples rack pages ready for later controls
 - Live metadata, BPM, pitch, key, time, loop, beat-jump, and sync state
-- Touch-native library browsing, filtering, and load-to-deck actions
+- Touch-native All Tracks browsing, filtering, and load-to-deck actions
 - Original dark theme and SVG icons
 - Keyboard shortcuts for Preferences (`Ctrl+P`) and Quit (`Ctrl+Q`)
 
 The skin remains a developer preview. Transport, mixer, additional performance
-pad modes, rack contents, detailed effect controls, and source/playlist
-navigation are incomplete.
+pad modes, rack contents, and detailed effect controls are incomplete. The
+browser shows All Tracks only; crate, playlist, and history navigation are absent.
 
 ## Screenshots
 

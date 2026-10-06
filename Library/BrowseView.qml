@@ -15,37 +15,33 @@ Rectangle {
     property bool restoreScrollAfterFilter: false
     property bool revealSelectionAfterFilter: false
     property real savedScrollOffset: 0
-    property bool sourceActivationInProgress: false
-    property int sourceLabelRevision: 0
     property int appearanceRevision: 0
     property var availableGenres: []
     property var availableCommentTokens: []
     readonly property int bpmColumnWidth: 64
     readonly property real columnWidthProgress: Math.max(0, Math.min(1, (width - 1024) / 896))
     readonly property int commentColumnWidth: 140 + Math.round(50 * root.columnWidthProgress)
+    readonly property url deck1TrackUrl: Mixxx.PlayerManager.getPlayer("[Channel1]").currentTrack?.trackLocationUrl || ""
+    readonly property url deck2TrackUrl: Mixxx.PlayerManager.getPlayer("[Channel2]").currentTrack?.trackLocationUrl || ""
     readonly property int durationColumnWidth: 60
     readonly property int genreColumnWidth: 96 + Math.round(24 * root.columnWidthProgress)
     readonly property int keyColumnWidth: 64
     readonly property int lastPlayedColumnWidth: 96 + Math.round(16 * root.columnWidthProgress)
     readonly property int libraryViewFocus: 3
     property int metadataRevision: 0
-    readonly property var modelCapabilities: root.trackModel ? root.trackModel.capabilities : Mixxx.LibraryTrackListModel.Capability.None
+    readonly property var modelCapabilities: root.trackModel ? root.trackModel.getCapabilities() : Mixxx.LibraryTrackListModel.Capability.None
     property var openSwipeRow: null
     readonly property string previewDeckGroup: "[PreviewDeck1]"
+    readonly property url previewTrackUrl: numPreviewDecksControl.value > 0
+            ? Mixxx.PlayerManager.getPlayer(root.previewDeckGroup).currentTrack?.trackLocationUrl || "" : ""
     readonly property int ratingColumnWidth: 64 + Math.round(8 * root.columnWidthProgress)
     property int selectedListIndex: -1
     property string selectedGenreFilter: ""
     property string selectedCommentFilter: ""
-    readonly property string selectedSourceLabel: {
-        root.sourceLabelRevision;
-        const index = sourceSelection.currentIndex;
-        return index.valid ? String(root.sourceModel.data(index, Qt.DisplayRole)) : qsTr("Tracks");
-    }
     property url selectedUrl
     property int sortColumn: 1
     property int sortOrder: Qt.AscendingOrder
-    readonly property var sourceModel: Mixxx.Library.sidebar
-    readonly property var trackModel: Mixxx.Library.model
+    property var trackModel: null
 
     readonly property bool canLoadToDeck: root.hasCapabilities(Mixxx.LibraryTrackListModel.Capability.LoadToDeck)
     readonly property bool canLoadToPreviewDeck: numPreviewDecksControl.value > 0 && root.hasCapabilities(Mixxx.LibraryTrackListModel.Capability.LoadToPreviewDeck)
@@ -63,9 +59,6 @@ Rectangle {
         }
     }
     function scheduleSearchFilter(resetSelection = false) {
-        if (root.sourceActivationInProgress && !resetSelection) {
-            return;
-        }
         if (resetSelection) {
             root.resetSelectionOnFilter = true;
             root.restoreScrollAfterFilter = false;
@@ -74,7 +67,7 @@ Rectangle {
         searchFilterTimer.restart();
     }
     function finishFilterUpdate() {
-        if (root.sourceActivationInProgress || searchFilterTimer.running || root.applyingSearchFilter) {
+        if (searchFilterTimer.running || root.applyingSearchFilter) {
             return;
         }
         root.ensureSelection();
@@ -236,7 +229,7 @@ Rectangle {
         trackList.positionViewAtIndex(nextIndex, ListView.Contain);
     }
     function ensureSelection() {
-        if (root.sourceActivationInProgress || searchFilterTimer.running || root.applyingSearchFilter) {
+        if (searchFilterTimer.running || root.applyingSearchFilter) {
             return;
         }
         const count = searchResultsGroup.count;
@@ -257,54 +250,6 @@ Rectangle {
         root.selectedListIndex = nextIndex;
         root.selectedUrl = searchResultsGroup.get(nextIndex).model.file_url;
         trackList.currentIndex = nextIndex;
-    }
-    function activateSource(modelIndex) {
-        if (!modelIndex.valid) {
-            return false;
-        }
-        root.sourceActivationInProgress = true;
-        searchFilterTimer.stop();
-        filteredTrackModel.model = null;
-        root.sourceModel.activate(modelIndex);
-        sourceSelection.setCurrentIndex(modelIndex, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
-        root.resetSourceTrackState();
-        root.sourceActivationInProgress = false;
-        return true;
-    }
-    function resetSourceTrackState() {
-        const wasActivating = root.sourceActivationInProgress;
-        root.sourceActivationInProgress = true;
-        searchFilterTimer.stop();
-        root.cancelPendingPositionRestore();
-        root.resetSelectionOnFilter = true;
-        if (root.openSwipeRow) {
-            root.openSwipeRow.closeMenu();
-        }
-        root.openSwipeRow = null;
-        filteredTrackModel.model = null;
-        root.selectedUrl = "";
-        root.selectedListIndex = -1;
-        root.selectedGenreFilter = "";
-        root.availableGenres = [];
-        root.selectedCommentFilter = "";
-        root.availableCommentTokens = [];
-        searchField.text = "";
-        root.sortColumn = 1;
-        root.sortOrder = Qt.AscendingOrder;
-        trackList.currentIndex = -1;
-        root.trackModel.search("");
-        if (root.canSort) {
-            root.trackModel.sort(root.sortColumn, root.sortOrder);
-        }
-        filteredTrackModel.model = root.trackModel;
-        root.sourceActivationInProgress = wasActivating;
-        root.scheduleSearchFilter(true);
-        trackList.positionViewAtBeginning();
-    }
-    function sourceTreeIndex(row, column) {
-        return sourceTreeView.index
-                ? sourceTreeView.index(row, column)
-                : sourceTreeView.modelIndex(Qt.point(column, row));
     }
     function selectTrack(url, row) {
         root.cancelPendingPositionRestore();
@@ -337,18 +282,19 @@ Rectangle {
     onVisibleChanged: root.appearanceRevision++
 
     Component.onCompleted: {
-        root.trackModel.setColumns(sourceColumns.defaultColumns);
-        const firstSource = root.sourceModel.index(0, 0);
-        root.sourceModel.activate(firstSource);
-        sourceSelection.setCurrentIndex(firstSource, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
-        root.resetSourceTrackState();
+        root.trackModel = libraryColumns.allTracks();
+        root.trackModel.search("");
+        if (root.canSort) {
+            root.trackModel.sort(root.sortColumn, root.sortOrder);
+        }
+        root.scheduleSearchFilter(true);
         if (libraryViewControl.value > 0) {
             focusedWidgetControl.value = root.libraryViewFocus;
         }
     }
 
     Mixxx.LibrarySourceTree {
-        id: sourceColumns
+        id: libraryColumns
 
         visible: false
 
@@ -569,34 +515,10 @@ Rectangle {
             }
         }
     }
-    ItemSelectionModel {
-        id: sourceSelection
-
-        model: root.sourceModel
-    }
-    Connections {
-        target: root.sourceModel
-
-        function onSelectIndex(index, scrollTo) {
-            sourceSelection.setCurrentIndex(index, ItemSelectionModel.ClearAndSelect | ItemSelectionModel.Rows);
-            sourceTreeView.expandToIndex(index);
-        }
-        function onDataChanged() {
-            root.sourceLabelRevision++;
-        }
-        function onModelReset() {
-            root.sourceLabelRevision++;
-        }
-    }
     Connections {
         target: root.trackModel
 
-        function onDataChanged(topLeft, bottomRight, roles) {
-            if (roles.length > 0 && roles.every(role =>
-                    role === Mixxx.LibraryTrackListModel.LoadedDeckMask ||
-                    role === Mixxx.LibraryTrackListModel.PreviewDeckLoaded)) {
-                return;
-            }
+        function onDataChanged() {
             root.metadataRevision++;
             root.scheduleSearchFilter();
         }
@@ -639,11 +561,6 @@ Rectangle {
         function onModelReset() {
             root.metadataRevision++;
             root.scheduleSearchFilter();
-        }
-        function onSourceModelChanged() {
-            if (!root.sourceActivationInProgress) {
-                root.resetSourceTrackState();
-            }
         }
     }
     Connections {
@@ -698,6 +615,8 @@ Rectangle {
 
             bpmColumnWidth: root.bpmColumnWidth
             commentColumnWidth: root.commentColumnWidth
+            deck1TrackUrl: root.deck1TrackUrl
+            deck2TrackUrl: root.deck2TrackUrl
             displayBpm: root.columnText(visualTrackRow.index, 3, root.metadataRevision, visualTrackRow.file_url)
             displayKey: root.formattedKey(visualTrackRow.track)
             displayLastPlayed: root.columnText(visualTrackRow.index, 7, root.metadataRevision, visualTrackRow.file_url)
@@ -708,6 +627,7 @@ Rectangle {
             lastPlayedColumnWidth: root.lastPlayedColumnWidth
             loadEnabled: root.canLoadToDeck
             previewEnabled: root.canLoadToPreviewDeck
+            previewTrackUrl: root.previewTrackUrl
             ratingColumnWidth: root.ratingColumnWidth
             selected: root.selectedUrl.toString() === file_url.toString()
             width: trackList.width
@@ -816,43 +736,6 @@ Rectangle {
                     id: clearTapHandler
 
                     onTapped: searchField.clear()
-                }
-            }
-            Rectangle {
-                Layout.preferredHeight: TouchTheme.minimumTouchSize
-                Layout.preferredWidth: 156
-                border.color: sourcePicker.visible ? TouchTheme.deck1Accent : TouchTheme.border
-                border.width: 1
-                color: sourceButtonTap.pressed ? TouchTheme.controlPressedBackground : TouchTheme.controlBackground
-
-                Row {
-                    anchors.centerIn: parent
-                    spacing: 8
-
-                    Image {
-                        anchors.verticalCenter: parent.verticalCenter
-                        fillMode: Image.PreserveAspectFit
-                        height: 20
-                        source: Qt.resolvedUrl("../Icons/browse.svg")
-                        sourceSize.height: 20
-                        sourceSize.width: 20
-                        width: 20
-                    }
-                    Text {
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: TouchTheme.primaryText
-                        elide: Text.ElideRight
-                        font.family: TouchTheme.fontFamily
-                        font.pixelSize: 13
-                        font.weight: Font.DemiBold
-                        text: root.selectedSourceLabel.toLocaleUpperCase()
-                        width: 104
-                    }
-                }
-                TapHandler {
-                    id: sourceButtonTap
-
-                    onTapped: sourcePicker.open()
                 }
             }
         }
@@ -1016,181 +899,6 @@ Rectangle {
             root.applySearchFilter(true);
         }
     }
-    Popup {
-        id: sourcePicker
-
-        parent: Overlay.overlay
-        x: Math.round((parent.width - width) / 2)
-        y: Math.round((parent.height - height) / 2)
-        width: Math.min(440, parent.width - 32)
-        height: Math.min(520, parent.height - 32)
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnReleaseOutside
-        focus: true
-        modal: true
-        padding: 0
-
-        Overlay.modal: Rectangle {
-            color: "#80000000"
-
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.AllButtons
-                preventStealing: true
-
-                onClicked: sourcePicker.close()
-                onWheel: wheel => wheel.accepted = true
-            }
-        }
-        background: Rectangle {
-            border.color: TouchTheme.deck1Accent
-            border.width: 1
-            color: TouchTheme.libraryBackground
-        }
-        contentItem: Item {
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.AllButtons
-
-                onWheel: wheel => wheel.accepted = true
-            }
-
-            Rectangle {
-                id: sourcePickerHeader
-
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                color: TouchTheme.libraryHeaderBackground
-                height: 56
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.right: closeSourcePicker.left
-                    anchors.rightMargin: 8
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: TouchTheme.primaryText
-                    elide: Text.ElideRight
-                    font.family: TouchTheme.fontFamily
-                    font.pixelSize: 16
-                    font.weight: Font.DemiBold
-                    text: qsTr("Library Source")
-                }
-                Rectangle {
-                    id: closeSourcePicker
-
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    color: closeSourcePickerTap.pressed ? TouchTheme.controlPressedBackground : "transparent"
-                    height: parent.height
-                    width: 56
-
-                    Text {
-                        anchors.centerIn: parent
-                        color: TouchTheme.secondaryText
-                        font.family: TouchTheme.fontFamily
-                        font.pixelSize: 22
-                        text: "x"
-                    }
-                    TapHandler {
-                        id: closeSourcePickerTap
-
-                        gesturePolicy: TapHandler.WithinBounds
-
-                        onTapped: sourcePicker.close()
-                    }
-                }
-                Rectangle {
-                    anchors.bottom: parent.bottom
-                    color: TouchTheme.border
-                    height: 1
-                    width: parent.width
-                }
-            }
-            TreeView {
-                id: sourceTreeView
-
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: sourcePickerHeader.bottom
-                clip: true
-                model: root.sourceModel
-                selectionModel: sourceSelection
-
-                onExpanded: (row, depth) => root.sourceModel.expand(root.sourceTreeIndex(row, 0))
-
-                delegate: Rectangle {
-                    id: sourceDelegate
-
-                    required property int column
-                    required property int depth
-                    required property bool expanded
-                    required property bool hasChildren
-                    required property bool isTreeNode
-                    required property string label
-                    required property bool selected
-                    required property int row
-                    required property TreeView treeView
-                    readonly property var modelIndex: root.sourceTreeIndex(row, column)
-
-                    color: selected ? TouchTheme.libraryRowSelectedBackground : sourceDelegateTap.pressed ? TouchTheme.controlPressedBackground : depth === 0 ? TouchTheme.controlBackground : TouchTheme.libraryRowBackground
-                    implicitHeight: 52
-                    implicitWidth: treeView.width
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 16 + sourceDelegate.depth * 24
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: TouchTheme.secondaryText
-                        font.family: TouchTheme.fontFamily
-                        font.pixelSize: 18
-                        rotation: sourceDelegate.expanded ? 90 : 0
-                        text: ">"
-                        visible: sourceDelegate.isTreeNode && sourceDelegate.hasChildren > 0
-                    }
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 44 + sourceDelegate.depth * 24
-                        anchors.right: parent.right
-                        anchors.rightMargin: 16
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: sourceDelegate.selected ? TouchTheme.deck1Accent : TouchTheme.primaryText
-                        elide: Text.ElideRight
-                        font.family: TouchTheme.fontFamily
-                        font.pixelSize: 15
-                        font.weight: sourceDelegate.depth === 0 ? Font.DemiBold : Font.Normal
-                        text: sourceDelegate.label
-                    }
-                    Rectangle {
-                        anchors.bottom: parent.bottom
-                        color: TouchTheme.border
-                        height: 1
-                        width: parent.width
-                    }
-                    TapHandler {
-                        id: sourceDelegateTap
-
-                        gesturePolicy: TapHandler.WithinBounds
-
-                        onTapped: {
-                            if (sourceDelegate.isTreeNode && sourceDelegate.hasChildren) {
-                                sourceDelegate.treeView.toggleExpanded(sourceDelegate.row);
-                                if (sourceDelegate.depth === 0 && sourceDelegate.modelIndex.row === 0) {
-                                    root.activateSource(sourceDelegate.modelIndex);
-                                }
-                            } else if (sourceDelegate.depth > 0 || sourceDelegate.modelIndex.row === 0) {
-                                if (root.activateSource(sourceDelegate.modelIndex)) {
-                                    sourcePicker.close();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     component ColumnHeader: Text {
         required property int columnIndex
         property bool highlighted: false

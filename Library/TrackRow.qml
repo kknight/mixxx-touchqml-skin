@@ -10,6 +10,8 @@ Item {
 
     readonly property real actionWidth: 192
     required property int bpmColumnWidth
+    required property url deck1TrackUrl
+    required property url deck2TrackUrl
     required property int commentColumnWidth
     required property url cover_art
     required property string displayBpm
@@ -25,11 +27,10 @@ Item {
     required property int keyColumnWidth
     required property int lastPlayedColumnWidth
     required property bool loadEnabled
-    required property int loaded_deck_mask
     property bool menuOpen: false
-    required property bool preview_deck_loaded
     property bool previewHoldTriggered: false
     required property bool previewEnabled
+    required property url previewTrackUrl
     required property int ratingColumnWidth
     property bool selected: false
     required property var track
@@ -69,13 +70,13 @@ Item {
         return palette[openKeyNumber - 1];
     }
     readonly property color loadedMarkerColor: {
-        if (loaded_deck_mask & 1) {
+        if (file_url.toString() === deck1TrackUrl.toString()) {
             return TouchTheme.deck1Accent;
         }
-        if (loaded_deck_mask & 2) {
+        if (file_url.toString() === deck2TrackUrl.toString()) {
             return TouchTheme.deck2Accent;
         }
-        if (preview_deck_loaded) {
+        if (file_url.toString() === previewTrackUrl.toString()) {
             return TouchTheme.previewAccent;
         }
         return TouchTheme.libraryRowSelectedBackground;

@@ -281,7 +281,7 @@ after `Mixxx.Core.ready`. Once core is ready, the root window reads
 accordingly, including after QML auto-reload. `TouchMainWindow.qml` keeps
 NavigationBar and DeckStatus persistent, then uses a
 `StackLayout` for everything below them. Performance, Browse, Touch FX, and
-Samples pages remain instantiated while hidden. This preserves browser source,
+Samples pages remain instantiated while hidden. This preserves browser
 filter, sort, selection, and scroll state and avoids rebuilding its model on
 each view change, at the cost of retaining page objects in memory.
 `PerformanceView` owns DeckOverview and the scrolling waveforms; `BrowseView`
@@ -415,11 +415,11 @@ The current components are:
   `EffectsManager.visibleEffectsModel` or `quickChainPresetModel`; choosing an
   item changes `EffectSlotProxy.effectId` or `loaded_chain_preset` without
   changing the slot or chain enabled state.
-- `BrowseView`: a touch-native browser backed by `Mixxx.Library.sidebar` and
-  the shared `Mixxx.Library.model` track proxy. It requires the APIs from the
-  Mixxx `feature/qml-library-sidebar` branch. A column-only `LibrarySourceTree`
-  supplies the definitions passed to `Library.model.setColumns()`; it creates
-  no private library features. Its visible columns show
+- `BrowseView`: a touch-native All Tracks browser. A hidden
+  `LibrarySourceTree` defines the columns and creates the browser's track proxy
+  once through `allTracks()`, using the API available on Mixxx main. No sidebar,
+  crate, playlist, history, or source-switching API is used. Its visible columns
+  show
   track/artist, Genre, Comment, BPM, Rating, Key, Time, and Last, in that order.
   Metadata comes from live QML track properties; BPM and Last Played use
   `LibraryTrackListModel.data()` with `Qt.DisplayRole` for Mixxx's localized
@@ -453,31 +453,16 @@ The current components are:
   `Load 1`/`Load 2` actions. Those actions call
   `Player.loadTrackFromLocationUrl()`; double-tapping remains an optional next-
   available-deck shortcut. Opening a row closes the previously open row, and
-  pooled delegates reset before reuse. A source button beside search opens a
-  centered touch tree backed by the live core sidebar, including crates,
-  dynamic crates, playlists, and history. Category taps expand/collapse without
-  replacing the track list; the first root also activates the Tracks library.
-  Source, genre, and comment popups consume mouse/touch input through exclusive control
-  tap handlers and accepting content/backdrop MouseAreas. Backdrop dismissal
-  waits for release, preventing a dismissal press from reaching lower controls.
-  Empty popup areas and backdrop wheel events are consumed; list scrolling
-  remains available. Leaf taps call `sidebar.activate()` and close the picker. Expansion calls
-  `sidebar.expand()` for lazy children. An `ItemSelectionModel` tracks sidebar
-  selection and follows the core's `selectIndex` signal. Source labels refresh
-  after sidebar edits. Source activation detaches the DelegateModel before the
-  core changes its rows, then clears selection, swipe state, local text/genre/comment
-  filters, pending scroll restoration, and the source model's saved search.
-  It applies Genre ascending when sorting is supported, reattaches the model
-  to recreate groups/delegates, and selects the first track once filtering
-  settles. External track-model source changes use the same reset. The shared
-  model's notifying `capabilities` property controls sorting and loading.
-  Entries that only switch to legacy widget pages remain visible in the tree,
-  but those pages are not rendered here; activating them leaves the track
-  proxy's previous data visible. Its 48-pixel headers call
-  `LibraryTrackListModel.sort()` when the model advertises sorting support and
+  pooled delegates reset before reuse. Genre and comment popups consume
+  mouse/touch input through exclusive control tap handlers and accepting
+  content/backdrop MouseAreas. Backdrop dismissal waits for release, preventing
+  a dismissal press from reaching lower controls. Empty popup areas and backdrop
+  wheel events are consumed; list scrolling remains available.
+  The track proxy's upstream `getCapabilities()` method controls sorting and
+  loading. Its 48-pixel headers call `LibraryTrackListModel.sort()` and
   default to Genre ascending, then preserve selection by URL across later
   ascending and descending sorts. Holding the Genre header for 500 milliseconds
-  opens a touch popup containing the source model's unique non-empty genre
+  opens a touch popup containing the all-tracks model's unique non-empty genre
   values plus an All Genres option. The selected exact, case-insensitive genre
   filter combines with text search and persists while Browse remains
   instantiated. Holding Comment for 500 milliseconds opens the same
@@ -485,9 +470,8 @@ The current components are:
   comment tokens and All Comments. Matching requires a whole token, combines
   with genre and text search, and highlights the Comment header in Sync Lead
   color. Tokens retain punctuation and are collected from every row in the
-  current source, independent of active filters. Filter changes reset selection
-  and scroll like Genre; source changes clear both filters. Metadata refreshes
-  rebuild token choices while retaining an active filter.
+  full library, independent of active filters. Filter changes reset selection
+  and scroll like Genre. Metadata refreshes rebuild token choices while retaining an active filter.
   Loading is likewise enabled only when the model advertises
   deck-loading support. Rating, genre, comment, duration, and Last Played use
   the verified current `ColumnCache` IDs because `TrackListColumn.SQLColumns` does not expose
@@ -495,12 +479,12 @@ The current components are:
   Last Played is 41 in the current checkout. All eight headers sort their
   corresponding model column; Genre remains the initial ascending sort.
   Persistent page ownership also preserves ListView position while Browse is
-  hidden. Model refreshes, including deck/preview load metadata and dynamic
-  crate membership updates, reapply local filters without clearing the selected
-  URL or scrolling to the beginning. Deck/preview indicator-only data changes
-  do not trigger filtering: delegates consume those roles directly. Search and
-  genre/comment choices read cached scalar metadata through `Library.model.data()`
-  with `Qt.EditRole`, never the full `track` role. Two extra model columns
+  hidden. Model refreshes, including deck/preview load metadata and library
+  membership updates, reapply local filters without clearing the selected
+  URL or scrolling to the beginning. Deck/preview indicators
+  update through player track URLs, without requiring custom library-model roles.
+  Search and genre/comment choices read cached scalar metadata through the
+  track proxy's `data()` with `Qt.EditRole`, never the full `track` role. Two extra model columns
   expose Artist and numeric Key for filtering only; the eight visible columns
   remain unchanged. Key searches use the same live notation as row labels.
   URL matching maps source rows to DelegateModel entries without assuming that
@@ -521,10 +505,9 @@ The current components are:
   Selection reconciliation waits through
   transient empty lists. If the selected track disappears, it chooses the
   nearest remaining filtered row, or clears selection for a genuinely empty
-  result. Explicit source changes reset search, genre, comment, sorting, selection, and
-  scroll. Query/genre/comment changes reset selection and scroll; sorting preserves the
-  selected URL and brings its new row into view. Loading does not request a
-  sort or reset the source.
+  result. Query/genre/comment changes reset selection and scroll; sorting
+  preserves the selected URL and brings its new row into view. Loading does not request a
+  sort or reset the browser.
   A compact Preview Deck 1 control sits left of search:
   its play/pause button drives the standard preview-deck play control, and its
   full-track RGB overview shows playback position and supports touch seeking.
@@ -625,9 +608,9 @@ Still experimental or incomplete:
 - The example is fixed at four engine decks and 64 samplers, with a declared
   minimum width of 1280. It aims to match LateNight, not demonstrate a small
   minimal skin.
-- TouchQML is still an early slice: Browse has a source-picker overlay, but the
-  current Mixxx QML API exposes only All Tracks rather than playlists, crates,
-  and other sources. Touch FX and Samples pages are empty, and transport, mixer,
+- TouchQML is still an early slice: Browse deliberately shows only All Tracks;
+  playlist, crate, history, and other source navigation are absent. Touch FX and
+  Samples pages are empty, and transport, mixer,
   additional pad modes, and the rest of the performance view are still absent.
 - Some scene-graph waveform renderer combinations remain unsupported; see the
   FIXMEs in `src/qml/qmlwaveformrenderer.cpp` and
