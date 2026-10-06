@@ -290,6 +290,18 @@ query, sort, selected row, and scroll position without rebuilding the model.
   combines with text search. The Genre header uses the Sync Lead color while a
   filter is active without replacing its label. Long text elides within its
   column.
+- Holding Comment for 500 milliseconds opens a single-select popup of unique
+  whitespace-separated comment values plus All Comments. Split on spaces,
+  tabs, and line breaks; ignore empty values, retain punctuation, deduplicate
+  case-insensitively, and sort choices alphabetically. Show values from the
+  entire current source, independent of active filters. Match whole values
+  case-insensitively and combine with Genre and text search. For example,
+  `warm` matches `warm vocal` but not `warmup`. Highlight the Comment header
+  using the Sync Lead color while active without changing its label. All
+  Comments clears only the comment filter. The popup shares Genre's touch
+  sizing, modal input handling, and dismissal behavior. Preserve the filter
+  while Browse is hidden and during track metadata refreshes; changing it
+  resets selection and scroll like Genre.
 - BPM follows Mixxx's library tempo precision and locale. Last displays the
   localized last-played date, with `--` for a track that has never been played.
   Genre, Comment, Rating, and Last widths grow within bounded ranges from
@@ -333,12 +345,12 @@ query, sort, selected row, and scroll position without rebuilding the model.
   offscreen selected row back into view. Keyboard/controller selection movement
   and explicit sorting still reveal the selected row.
   Clear selection only when the final result is empty. Explicit source or
-  search/genre changes may reset to the beginning; sorting keeps the selected
+  search/genre/comment changes may reset to the beginning; sorting keeps the selected
   track visible at its new position.
 - Double-tap is retained only as an optional shortcut for loading the selected
   track into Mixxx's next available deck.
 - A 48-pixel-high text input filters title, artist, genre, comment, and key with
-  a short debounce. Filtering and genre collection use cached metadata, so
+  a short debounce. Filtering and genre/comment collection use cached metadata, so
   scanning a crate does not create full Track objects for all its rows. It
   replaces both the global Search navigation button and the selected-track/load
   toolbar above the browser.
@@ -357,7 +369,7 @@ query, sort, selected row, and scroll position without rebuilding the model.
   activates the full library. Leaf taps activate the core source and close the
   popup. Lazy children load on expansion, and current-source highlighting
   follows the tree selection, including core selection requests. Switching
-  sources starts a fresh list: clear search text, genre filters, selection,
+  sources starts a fresh list: clear search text, genre and comment filters, selection,
   swipe actions, and pending scroll restoration; reset sorting to Genre
   ascending when supported and start at the first track. Recreate the filtered
   list after the core source switch rather than carrying old groups/delegates
@@ -366,7 +378,7 @@ query, sort, selected row, and scroll position without rebuilding the model.
   widget page do not render that page in this skin; their activation leaves the
   previous track data visible. Requires Mixxx's `feature/qml-library-sidebar`
   APIs.
-- Source and genre popups block clicks, taps, and scroll input from reaching the
+- Source, genre, and comment popups block clicks, taps, and scroll input from reaching the
   UI underneath, including their headers and empty areas. Outside clicks/taps
   dismiss on release; the dismissing gesture cannot activate a lower control.
   Popup lists remain scrollable, and Escape still closes them.

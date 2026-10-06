@@ -19,6 +19,7 @@ Rectangle {
     property int sourceLabelRevision: 0
     property int appearanceRevision: 0
     property var availableGenres: []
+    property var availableCommentTokens: []
     readonly property int bpmColumnWidth: 64
     readonly property real columnWidthProgress: Math.max(0, Math.min(1, (width - 1024) / 896))
     readonly property int commentColumnWidth: 140 + Math.round(50 * root.columnWidthProgress)
@@ -34,6 +35,7 @@ Rectangle {
     readonly property int ratingColumnWidth: 64 + Math.round(8 * root.columnWidthProgress)
     property int selectedListIndex: -1
     property string selectedGenreFilter: ""
+    property string selectedCommentFilter: ""
     readonly property string selectedSourceLabel: {
         root.sourceLabelRevision;
         const index = sourceSelection.currentIndex;
@@ -101,10 +103,12 @@ Rectangle {
             root.selectedListIndex = -1;
         }
         root.applyingSearchFilter = true;
-        const genresByKey = {};
+        const genresByKey = Object.create(null);
+        const commentTokensByKey = Object.create(null);
         const query = searchField.text.trim().toLocaleLowerCase();
         const genreFilter = root.selectedGenreFilter.toLocaleLowerCase();
-        const filtersActive = query.length > 0 || genreFilter.length > 0;
+        const commentFilter = root.selectedCommentFilter.toLocaleLowerCase();
+        const filtersActive = query.length > 0 || genreFilter.length > 0 || commentFilter.length > 0;
         const matchingUrls = new Set();
         for (let row = 0; row < root.trackModel.rowCount(); ++row) {
             const genre = root.filterColumnText(row, 1).trim();
@@ -112,14 +116,26 @@ Rectangle {
             if (genre.length > 0 && !Object.prototype.hasOwnProperty.call(genresByKey, genreKey)) {
                 genresByKey[genreKey] = genre;
             }
-            if (!filtersActive || (genreFilter.length > 0 && genreKey !== genreFilter)) {
+            const comment = root.filterColumnText(row, 2);
+            const commentTokens = comment.match(/\S+/g) || [];
+            let commentMatches = commentFilter.length === 0;
+            for (const token of commentTokens) {
+                const tokenKey = token.toLocaleLowerCase();
+                if (!Object.prototype.hasOwnProperty.call(commentTokensByKey, tokenKey)) {
+                    commentTokensByKey[tokenKey] = token;
+                }
+                if (tokenKey === commentFilter) {
+                    commentMatches = true;
+                }
+            }
+            if (!filtersActive || !commentMatches || (genreFilter.length > 0 && genreKey !== genreFilter)) {
                 continue;
             }
             if (query.length > 0) {
                 const numericKey = Number(root.trackModel.data(root.trackModel.index(row, 9), Qt.EditRole)) || 0;
                 const key = Mixxx.KeyUtils.keyToString(numericKey, keyNotationControl.value);
                 const searchableText = [root.filterColumnText(row, 0), root.filterColumnText(row, 8),
-                        genre, root.filterColumnText(row, 2), key].join(" ").toLocaleLowerCase();
+                        genre, comment, key].join(" ").toLocaleLowerCase();
                 if (!searchableText.includes(query)) {
                     continue;
                 }
@@ -137,6 +153,7 @@ Rectangle {
             }
         }
         root.availableGenres = Object.keys(genresByKey).map(key => genresByKey[key]).sort((left, right) => left.localeCompare(right));
+        root.availableCommentTokens = Object.keys(commentTokensByKey).map(key => commentTokensByKey[key]).sort((left, right) => left.localeCompare(right));
         root.applyingSearchFilter = false;
         if (resetSelection) {
             trackList.positionViewAtBeginning();
@@ -269,6 +286,8 @@ Rectangle {
         root.selectedListIndex = -1;
         root.selectedGenreFilter = "";
         root.availableGenres = [];
+        root.selectedCommentFilter = "";
+        root.availableCommentTokens = [];
         searchField.text = "";
         root.sortColumn = 1;
         root.sortOrder = Qt.AscendingOrder;
@@ -873,7 +892,14 @@ Rectangle {
             ColumnHeader {
                 Layout.preferredWidth: root.commentColumnWidth
                 columnIndex: 2
+                highlighted: root.selectedCommentFilter.length > 0
+                holdEnabled: root.trackModel !== null
                 label: qsTr("COMMENT")
+
+                onHeld: {
+                    root.applySearchFilter();
+                    commentPicker.open();
+                }
             }
             ColumnHeader {
                 Layout.preferredWidth: root.bpmColumnWidth
@@ -961,155 +987,33 @@ Rectangle {
         color: TouchTheme.mutedText
         font.family: TouchTheme.fontFamily
         font.pixelSize: 18
-        text: root.trackModel === null ? qsTr("Loading library…") : searchField.text.length > 0 || root.selectedGenreFilter.length > 0 ? qsTr("No tracks match current filters") : qsTr("No tracks in the library")
+        text: root.trackModel === null ? qsTr("Loading library…") : searchField.text.length > 0 || root.selectedGenreFilter.length > 0 || root.selectedCommentFilter.length > 0 ? qsTr("No tracks match current filters") : qsTr("No tracks in the library")
         visible: trackList.count === 0
     }
-    Popup {
+    ValueFilterPicker {
         id: genrePicker
 
-        parent: Overlay.overlay
-        x: Math.round((parent.width - width) / 2)
-        y: Math.round((parent.height - height) / 2)
-        width: Math.min(400, parent.width - 32)
-        height: Math.min(520, 56 + (root.availableGenres.length + 1) * TouchTheme.minimumTouchSize, parent.height - 32)
-        closePolicy: Popup.CloseOnEscape | Popup.CloseOnReleaseOutside
-        focus: true
-        modal: true
-        padding: 0
+        values: root.availableGenres
+        selectedValue: root.selectedGenreFilter
+        title: qsTr("Genre Filter")
+        allLabel: qsTr("ALL GENRES")
 
-        Overlay.modal: Rectangle {
-            color: "#80000000"
-
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.AllButtons
-                preventStealing: true
-
-                onClicked: genrePicker.close()
-                onWheel: wheel => wheel.accepted = true
-            }
+        onValueSelected: value => {
+            root.selectedGenreFilter = value;
+            root.applySearchFilter(true);
         }
-        background: Rectangle {
-            border.color: TouchTheme.deck1Accent
-            border.width: 1
-            color: TouchTheme.libraryBackground
-        }
-        contentItem: Item {
-            MouseArea {
-                anchors.fill: parent
-                acceptedButtons: Qt.AllButtons
+    }
+    ValueFilterPicker {
+        id: commentPicker
 
-                onWheel: wheel => wheel.accepted = true
-            }
+        values: root.availableCommentTokens
+        selectedValue: root.selectedCommentFilter
+        title: qsTr("Comment Filter")
+        allLabel: qsTr("ALL COMMENTS")
 
-            Rectangle {
-                id: genrePickerHeader
-
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: parent.top
-                color: TouchTheme.libraryHeaderBackground
-                height: 56
-
-                Text {
-                    anchors.left: parent.left
-                    anchors.leftMargin: 16
-                    anchors.right: closeGenrePicker.left
-                    anchors.rightMargin: 8
-                    anchors.verticalCenter: parent.verticalCenter
-                    color: TouchTheme.primaryText
-                    elide: Text.ElideRight
-                    font.family: TouchTheme.fontFamily
-                    font.pixelSize: 16
-                    font.weight: Font.DemiBold
-                    text: qsTr("Genre Filter")
-                }
-                Rectangle {
-                    id: closeGenrePicker
-
-                    anchors.right: parent.right
-                    anchors.top: parent.top
-                    color: closeGenrePickerTap.pressed ? TouchTheme.controlPressedBackground : "transparent"
-                    height: parent.height
-                    width: 56
-
-                    Text {
-                        anchors.centerIn: parent
-                        color: TouchTheme.secondaryText
-                        font.family: TouchTheme.fontFamily
-                        font.pixelSize: 22
-                        text: "x"
-                    }
-                    TapHandler {
-                        id: closeGenrePickerTap
-
-                        gesturePolicy: TapHandler.WithinBounds
-
-                        onTapped: genrePicker.close()
-                    }
-                }
-                Rectangle {
-                    anchors.bottom: parent.bottom
-                    color: TouchTheme.border
-                    height: 1
-                    width: parent.width
-                }
-            }
-            ListView {
-                anchors.bottom: parent.bottom
-                anchors.left: parent.left
-                anchors.right: parent.right
-                anchors.top: genrePickerHeader.bottom
-                clip: true
-                model: [""].concat(root.availableGenres)
-
-                ScrollBar.vertical: ScrollBar {
-                    policy: ScrollBar.AsNeeded
-                }
-
-                delegate: Rectangle {
-                    id: genreDelegate
-
-                    required property int index
-                    required property string modelData
-                    readonly property bool selected: root.selectedGenreFilter === modelData
-
-                    color: selected ? TouchTheme.libraryRowSelectedBackground : genreDelegateTap.pressed ? TouchTheme.controlPressedBackground : index % 2 === 0 ? TouchTheme.libraryRowBackground : TouchTheme.libraryRowAlternateBackground
-                    height: TouchTheme.minimumTouchSize
-                    width: ListView.view.width
-
-                    Text {
-                        anchors.left: parent.left
-                        anchors.leftMargin: 16
-                        anchors.right: parent.right
-                        anchors.rightMargin: 16
-                        anchors.verticalCenter: parent.verticalCenter
-                        color: genreDelegate.selected ? TouchTheme.deck1Accent : TouchTheme.primaryText
-                        elide: Text.ElideRight
-                        font.family: TouchTheme.fontFamily
-                        font.pixelSize: 15
-                        font.weight: genreDelegate.selected ? Font.DemiBold : Font.Normal
-                        text: genreDelegate.modelData.length > 0 ? genreDelegate.modelData : qsTr("ALL GENRES")
-                    }
-                    Rectangle {
-                        anchors.bottom: parent.bottom
-                        color: TouchTheme.border
-                        height: 1
-                        width: parent.width
-                    }
-                    TapHandler {
-                        id: genreDelegateTap
-
-                        gesturePolicy: TapHandler.WithinBounds
-
-                        onTapped: {
-                            root.selectedGenreFilter = genreDelegate.modelData;
-                            root.applySearchFilter(true);
-                            genrePicker.close();
-                        }
-                    }
-                }
-            }
+        onValueSelected: value => {
+            root.selectedCommentFilter = value;
+            root.applySearchFilter(true);
         }
     }
     Popup {

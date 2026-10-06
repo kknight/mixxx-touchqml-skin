@@ -455,7 +455,7 @@ The current components are:
   centered touch tree backed by the live core sidebar, including crates,
   dynamic crates, playlists, and history. Category taps expand/collapse without
   replacing the track list; the first root also activates the Tracks library.
-  Source and genre popups consume mouse/touch input through exclusive control
+  Source, genre, and comment popups consume mouse/touch input through exclusive control
   tap handlers and accepting content/backdrop MouseAreas. Backdrop dismissal
   waits for release, preventing a dismissal press from reaching lower controls.
   Empty popup areas and backdrop wheel events are consumed; list scrolling
@@ -463,7 +463,7 @@ The current components are:
   `sidebar.expand()` for lazy children. An `ItemSelectionModel` tracks sidebar
   selection and follows the core's `selectIndex` signal. Source labels refresh
   after sidebar edits. Source activation detaches the DelegateModel before the
-  core changes its rows, then clears selection, swipe state, local text/genre
+  core changes its rows, then clears selection, swipe state, local text/genre/comment
   filters, pending scroll restoration, and the source model's saved search.
   It applies Genre ascending when sorting is supported, reattaches the model
   to recreate groups/delegates, and selects the first track once filtering
@@ -478,7 +478,15 @@ The current components are:
   opens a touch popup containing the source model's unique non-empty genre
   values plus an All Genres option. The selected exact, case-insensitive genre
   filter combines with text search and persists while Browse remains
-  instantiated. Loading is likewise enabled only when the model advertises
+  instantiated. Holding Comment for 500 milliseconds opens the same
+  `ValueFilterPicker` with case-insensitively unique, sorted whitespace-separated
+  comment tokens and All Comments. Matching requires a whole token, combines
+  with genre and text search, and highlights the Comment header in Sync Lead
+  color. Tokens retain punctuation and are collected from every row in the
+  current source, independent of active filters. Filter changes reset selection
+  and scroll like Genre; source changes clear both filters. Metadata refreshes
+  rebuild token choices while retaining an active filter.
+  Loading is likewise enabled only when the model advertises
   deck-loading support. Rating, genre, comment, duration, and Last Played use
   the verified current `ColumnCache` IDs because `TrackListColumn.SQLColumns` does not expose
   those fields yet; BPM uses its named `Bpm` enum. Rating is column ID 26 and
@@ -489,13 +497,14 @@ The current components are:
   crate membership updates, reapply local filters without clearing the selected
   URL or scrolling to the beginning. Deck/preview indicator-only data changes
   do not trigger filtering: delegates consume those roles directly. Search and
-  genre choices read cached scalar metadata through `Library.model.data()`
+  genre/comment choices read cached scalar metadata through `Library.model.data()`
   with `Qt.EditRole`, never the full `track` role. Two extra model columns
   expose Artist and numeric Key for filtering only; the eight visible columns
   remain unchanged. Key searches use the same live notation as row labels.
   URL matching maps source rows to DelegateModel entries without assuming that
-  filtered indices equal source indices. Empty search/genre filters skip title,
-  artist, comment, key, and URL reads. Full QML track objects remain confined to
+  filtered indices equal source indices. Empty search/genre/comment filters skip
+  title, artist, key, and URL reads; genre and comment reads collect choices.
+  Full QML track objects remain confined to
   visible/pooled delegates. Before row removal, insertion, movement, layout
   changes, or resets, Browse saves the scroll offset; after the debounced
   update settles, it remaps the URL into the filtered list and restores the
@@ -510,8 +519,8 @@ The current components are:
   Selection reconciliation waits through
   transient empty lists. If the selected track disappears, it chooses the
   nearest remaining filtered row, or clears selection for a genuinely empty
-  result. Explicit source changes reset search, genre, sorting, selection, and
-  scroll. Query/genre changes reset selection and scroll; sorting preserves the
+  result. Explicit source changes reset search, genre, comment, sorting, selection, and
+  scroll. Query/genre/comment changes reset selection and scroll; sorting preserves the
   selected URL and brings its new row into view. Loading does not request a
   sort or reset the source.
   A compact Preview Deck 1 control sits left of search:
