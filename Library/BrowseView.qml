@@ -21,8 +21,6 @@ Rectangle {
     readonly property int bpmColumnWidth: 64
     readonly property real columnWidthProgress: Math.max(0, Math.min(1, (width - 1024) / 896))
     readonly property int commentColumnWidth: 140 + Math.round(50 * root.columnWidthProgress)
-    readonly property url deck1TrackUrl: Mixxx.PlayerManager.getPlayer("[Channel1]").currentTrack?.trackLocationUrl || ""
-    readonly property url deck2TrackUrl: Mixxx.PlayerManager.getPlayer("[Channel2]").currentTrack?.trackLocationUrl || ""
     readonly property int durationColumnWidth: 60
     readonly property int genreColumnWidth: 96 + Math.round(24 * root.columnWidthProgress)
     readonly property int keyColumnWidth: 64
@@ -32,8 +30,6 @@ Rectangle {
     readonly property var modelCapabilities: root.trackModel ? root.trackModel.getCapabilities() : Mixxx.LibraryTrackListModel.Capability.None
     property var openSwipeRow: null
     readonly property string previewDeckGroup: "[PreviewDeck1]"
-    readonly property url previewTrackUrl: numPreviewDecksControl.value > 0
-            ? Mixxx.PlayerManager.getPlayer(root.previewDeckGroup).currentTrack?.trackLocationUrl || "" : ""
     readonly property int ratingColumnWidth: 64 + Math.round(8 * root.columnWidthProgress)
     property int selectedListIndex: -1
     property string selectedGenreFilter: ""
@@ -518,7 +514,14 @@ Rectangle {
     Connections {
         target: root.trackModel
 
-        function onDataChanged() {
+        function onDataChanged(topLeft, bottomRight, roles) {
+            // Delegates consume load-state roles directly; these changes do
+            // not affect search, sorting, or played-track text colours.
+            if (roles.length > 0 && roles.every(role =>
+                    role === Mixxx.LibraryTrackListModel.LoadedDeckMask ||
+                    role === Mixxx.LibraryTrackListModel.PreviewDeckLoaded)) {
+                return;
+            }
             root.metadataRevision++;
             root.scheduleSearchFilter();
         }
@@ -615,8 +618,6 @@ Rectangle {
 
             bpmColumnWidth: root.bpmColumnWidth
             commentColumnWidth: root.commentColumnWidth
-            deck1TrackUrl: root.deck1TrackUrl
-            deck2TrackUrl: root.deck2TrackUrl
             displayBpm: root.columnText(visualTrackRow.index, 3, root.metadataRevision, visualTrackRow.file_url)
             displayKey: root.formattedKey(visualTrackRow.track)
             displayLastPlayed: root.columnText(visualTrackRow.index, 7, root.metadataRevision, visualTrackRow.file_url)
@@ -627,7 +628,6 @@ Rectangle {
             lastPlayedColumnWidth: root.lastPlayedColumnWidth
             loadEnabled: root.canLoadToDeck
             previewEnabled: root.canLoadToPreviewDeck
-            previewTrackUrl: root.previewTrackUrl
             ratingColumnWidth: root.ratingColumnWidth
             selected: root.selectedUrl.toString() === file_url.toString()
             width: trackList.width

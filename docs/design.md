@@ -320,6 +320,11 @@ query, sort, selected row, and scroll position without rebuilding the model.
   tracks loaded in Deck 1, Deck 2, and Preview Deck 1 respectively. Other rows
   use the selected-row background color for their strip; selection alone has
   no blue accent and its strip blends into the selected background.
+  Markers follow loads, track replacements, and unloads while Browse is open
+  or hidden, including on reused delegates. Played-track greying affects text
+  only and must not remove or dim the loaded-track strip. Use the model's
+  `loaded_deck_mask` bits for Deck 1/2 and `preview_deck_loaded` for preview
+  decks. Load-state role updates must not reset filtering, selection, or scroll.
 - Dragging a row left reveals a 192-pixel action pane containing 96-pixel-wide
   `Load 1` and `Load 2` targets. The row snaps open after crossing its threshold,
   only one row remains open, and recycled rows reset to the closed position.

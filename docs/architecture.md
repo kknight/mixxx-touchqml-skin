@@ -482,7 +482,13 @@ The current components are:
   hidden. Model refreshes, including deck/preview load metadata and library
   membership updates, reapply local filters without clearing the selected
   URL or scrolling to the beginning. Deck/preview indicators
-  update through player track URLs, without requiring custom library-model roles.
+  consume the live `loaded_deck_mask` and `preview_deck_loaded` roles supplied
+  by `feature/qml-mark-loaded-track`. `TrackRow` declares them as required
+  model-role properties; bit 0 identifies Deck 1 and bit 1 identifies Deck 2,
+  with the preview role covering any preview deck. Indicator-only dataChanged
+  notifications update delegates without scheduling filtering or changing
+  selection/scroll. Marker colours remain independent of played-track
+  foreground colours and no longer compare player track URLs.
   Search and genre/comment choices read cached scalar metadata through the
   track proxy's `data()` with `Qt.EditRole`, never the full `track` role. Two extra model columns
   expose Artist and numeric Key for filtering only; the eight visible columns
