@@ -116,7 +116,7 @@ Rectangle {
         icon.width: TouchTheme.waveformEditIconSize
         icon.height: TouchTheme.waveformEditIconSize
         icon.color: !button.enabled ? TouchTheme.mutedText :
-            button.controlActive || button.activeFocus ? root.accentColor : TouchTheme.primaryText
+            button.controlActive ? root.accentColor : TouchTheme.primaryText
 
         onClicked: {
             if (togglesControl) {
@@ -134,6 +134,16 @@ Rectangle {
         }
         background: Rectangle {
             color: button.down ? TouchTheme.controlPressedBackground : TouchTheme.controlBackground
+
+            Rectangle {
+                anchors.bottom: parent.bottom
+                anchors.bottomMargin: 2
+                anchors.horizontalCenter: parent.horizontalCenter
+                width: 3
+                height: 3
+                color: TouchTheme.primaryText
+                visible: button.visualFocus
+            }
         }
     }
 }

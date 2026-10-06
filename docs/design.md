@@ -466,6 +466,9 @@ Set Intro remains available for locked tracks. Disable every action while the
 deck is empty. Actions use a single tap; grid shifts and Set Intro immediately
 reset their core trigger controls, while BPM lock and quantize retain their states.
 Keyboard activation and visible focus feedback are available.
+The deck-coloured icon indicates the control's active state only. Keyboard
+focus uses a small neutral marker, so switching quantize off shows a neutral
+icon even while its button retains focus.
 
 ## Fourth Implementation Slice: Hotcue Strips
 

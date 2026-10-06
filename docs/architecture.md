@@ -382,7 +382,9 @@ The current components are:
   moves the grid later and is supported by the engine for constant-BPM tracks.
   The quantize button toggles the owning deck's existing `quantize` control;
   its magnet icon uses the deck accent while enabled and follows controller
-  changes. BPM lock does not disable quantize.
+  changes. Icon accents follow control state only; keyboard focus is indicated
+  by a small neutral marker so a focused, disabled quantize state cannot appear
+  active. BPM lock does not disable quantize.
   A BPM lock button toggles the existing `bpmlock` control and displays its live
   state, including controller changes. The borderless button shows an open
   neutral lock when unlocked and a closed lock tinted with the deck's blue or
