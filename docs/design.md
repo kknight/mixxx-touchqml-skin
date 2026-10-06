@@ -69,7 +69,8 @@ The original Mixxx design should have:
 
 - Normal interactive targets should be at least 48 × 48 logical pixels.
 - Compact DeckStatus actions at 36 pixels and waveform hotcue strips at 32
-  pixels are explicit height exceptions.
+  pixels are explicit height exceptions. Waveform editing buttons are an
+  explicit 36 × 36-pixel size exception.
 - No required action may depend on hover, a right click, or a mouse wheel.
 - Provide immediate visual feedback on press and a persistent indication for
   toggled state.
@@ -187,6 +188,10 @@ to the right-deck color at the same `deckSplitX` coordinate.
 
 ### `NavigationBar`
 
+Settings uses an icon-only cog button immediately left of the clock, with a
+48 × 48 logical-pixel target, an accessible Settings name, and active-page
+feedback.
+
 - Fixed height: 48 logical pixels, including its bottom accent rule.
 - Left-aligned primary destinations: Browse, Touch FX, and Samples using their
   existing Mixxx view controls.
@@ -273,11 +278,11 @@ The Browse navigation button toggles the core-owned
 `[Skin],show_maximized_library` control. While active, the content area below
 the persistent 120-pixel navigation/status header replaces `PerformanceView`
 with a touch-native all-tracks list backed by Mixxx's QML library model. Pages
-remain instantiated in a `StackLayout`, so reopening Browse restores its source,
+remain instantiated in a `StackLayout`, so reopening Browse restores its
 query, sort, selected row, and scroll position without rebuilding the model.
 
 - Track rows are 56 logical pixels high and support touch flicking.
-- The browser aligns track/artist, rating, genre, comment, key, and duration
+- The browser aligns Title/Artist, Genre, Comment, BPM, Rating, Key, Time, Last
   under a persistent 48-pixel sortable column header. Tapping a header sorts
   ascending; tapping it again reverses order. Initial order is Genre ascending.
   Holding Genre for 500 milliseconds opens a single-select popup of unique
@@ -285,8 +290,41 @@ query, sort, selected row, and scroll position without rebuilding the model.
   combines with text search. The Genre header uses the Sync Lead color while a
   filter is active without replacing its label. Long text elides within its
   column.
+- Holding Comment for 500 milliseconds opens a single-select popup of unique
+  whitespace-separated comment values plus All Comments. Split on spaces,
+  tabs, and line breaks; ignore empty values, retain punctuation, deduplicate
+  case-insensitively, and sort choices alphabetically. Show values from the
+  entire library, independent of active filters. Match whole values
+  case-insensitively and combine with Genre and text search. For example,
+  `warm` matches `warm vocal` but not `warmup`. Highlight the Comment header
+  using the Sync Lead color while active without changing its label. All
+  Comments clears only the comment filter. The popup shares Genre's touch
+  sizing, modal input handling, and dismissal behavior. Preserve the filter
+  while Browse is hidden and during track metadata refreshes; changing it
+  resets selection and scroll like Genre.
+- BPM follows Mixxx's library tempo precision and locale. Last displays the
+  localized last-played date, with `--` for a track that has never been played.
+  Genre, Comment, Rating, and Last widths grow within bounded ranges from
+  1024 to 1920 pixels; all columns remain visible and Title/Artist fills the
+  remaining space. Headers and rows use identical widths and gaps.
+- Honor Mixxx's Grey out played tracks preference using its library-model
+  foreground color for title, artist, and all metadata, including Key. Use
+  the actual played flag, independent of Last Played or loaded-deck indicators.
+  Restore normal theme and key colors when the preference is disabled or the
+  played flag is cleared. Selection, artwork, and load indicators retain
+  their usual appearance. Applied preference changes appear within one second
+  while Browse is visible and immediately when it is reopened.
 - A tap selects a track. Starting a left drag selects that track as well, before
   the row begins revealing its actions.
+- Reserve the three-pixel left strip's blue, green, and orange accents for
+  tracks loaded in Deck 1, Deck 2, and Preview Deck 1 respectively. Other rows
+  use the selected-row background color for their strip; selection alone has
+  no blue accent and its strip blends into the selected background.
+  Markers follow loads, track replacements, and unloads while Browse is open
+  or hidden, including on reused delegates. Played-track greying affects text
+  only and must not remove or dim the loaded-track strip. Use the model's
+  `loaded_deck_mask` bits for Deck 1/2 and `preview_deck_loaded` for preview
+  decks. Load-state role updates must not reset filtering, selection, or scroll.
 - Dragging a row left reveals a 192-pixel action pane containing 96-pixel-wide
   `Load 1` and `Load 2` targets. The row snaps open after crossing its threshold,
   only one row remains open, and recycled rows reset to the closed position.
@@ -298,27 +336,51 @@ query, sort, selected row, and scroll position without rebuilding the model.
   and wrapping at list boundaries thereafter. Up/Down keys use the same movement
   behavior; Enter/Return loads into the next available deck. URL, list index,
   current item, and visible position remain synchronized. Loading and sorting
-  honor the active model's advertised capabilities. Browse state remains
+  honor the all-tracks model's advertised capabilities. Browse state remains
   available for the next opening.
+- Loading a track into a deck or preview must preserve Browse selection and
+  scroll position during metadata and model refreshes. Reconcile selection by
+  URL after the filtered list settles, including temporary empty/rebuilt library
+  lists and incremental row insertions, removals, or moves. A metadata-driven
+  row move preserves the scroll position without automatically revealing the
+  selected row. If the library removes the selected track, select the nearest
+  remaining row and clamp the previous scroll position to the new list bounds.
+  Manual flicking, wheel scrolling, and scrollbar dragging take precedence over
+  pending refresh restoration. Scrolling does not clear selection or pull an
+  offscreen selected row back into view. Keyboard/controller selection movement
+  and explicit sorting still reveal the selected row.
+  Clear selection only when the final result is empty. Explicit
+  search/genre/comment changes may reset to the beginning; sorting keeps the selected
+  track visible at its new position.
 - Double-tap is retained only as an optional shortcut for loading the selected
   track into Mixxx's next available deck.
 - A 48-pixel-high text input filters title, artist, genre, comment, and key with
-  a short debounce. It replaces both the global Search navigation button and
-  the selected-track/load toolbar above the browser.
+  a short debounce. Filtering and genre/comment collection use cached metadata, so
+  scanning the library does not create full Track objects for all its rows. It
+  replaces both the global Search navigation button and the selected-track/load
+  toolbar above the browser.
+- Key labels follow the current Key Notation preference immediately, including
+  while Browse is hidden. Key searches use that same notation and refresh when
+  it changes, retaining a still-matching selection without resetting scrolling
+  to the beginning.
 - A 320-pixel compact preview control sits left of search when a preview deck is
   available. It contains a 48-pixel play/pause target and a seekable full-track
   RGB waveform for Preview Deck 1. Holding a track row for 500 milliseconds
   selects that row, loads it into Preview Deck 1, and starts playback when the
   active model advertises preview-deck loading support.
-- A 48-pixel-high source button to the right of search opens a centered modal
-  tree. Activating an available source replaces the track model and keeps the
-  search filter local to that model. Current Mixxx QML exposes only All Tracks;
-  playlist, crate, and other source wrappers remain upstream follow-up work.
+- Browse shows only All Tracks, using the upstream `LibrarySourceTree.allTracks()`
+  API with the browser's column definitions. There is no source picker or
+  dependency on custom crate, playlist, history, or live-sidebar APIs.
+  Deck/preview loading must not reset the browser's filters, sort, or position.
+- Genre and comment popups block clicks, taps, and scroll input from reaching the
+  UI underneath, including their headers and empty areas. Outside clicks/taps
+  dismiss on release; the dismissing gesture cannot activate a lower control.
+  Popup lists remain scrollable, and Escape still closes them.
 
 ## Third Implementation Slice: Performance Waveforms
 
 `PerformanceView` begins below the persistent DeckStatus row. It owns the
-88-pixel `DeckOverviewRow`, two full-width stacked scrolling waveforms, and the
+88-pixel `DeckOverviewRow`, two stacked scrolling waveform rows, and the
 remaining space reserved for later transport, pad, and mixer slices.
 
 - Deck 1 is the upper scrolling waveform with a 3-pixel blue left accent.
@@ -335,19 +397,76 @@ remaining space reserved for later transport, pad, and mixer slices.
   colors, and saved-loop ranges/endpoints stay synchronized with Mixxx. Show the
   main cue and active-loop boundaries explicitly. Show both intro and outro
   endpoints and ranges only while `[Skin],show_intro_outro_cues` is active.
+  Keep native hotcues and explicit CUE/loop/intro/outro markers in separate
+  renderer sets so a hotcue at the same position cannot remove a fixed marker.
+  Draw fixed markers underneath hotcues so hotcue colors and labels stay readable.
+  Render the playhead and next-hotcue readout only once.
 - Markers outside the current scrolling-waveform time window are not represented
   by edge indicators.
 - Bind zoom to each deck's `waveform_zoom` control and honor Mixxx's synchronized
-  waveform-zoom preference.
+  waveform-zoom preference. Initialize the owning zoom control from Mixxx's
+  default waveform zoom preference and apply subsequent preference changes;
+  secondary synchronized waveforms share Deck 1's control without resetting it.
 - Main waveforms are display-only in this slice. Do not copy the upstream mouse
   scratching, right-button bending, or wheel-zoom handlers into the touch UI.
 - Keep pages instantiated to preserve Browse state and avoid model reloads.
   Hidden pages do not contribute visible scene-graph nodes, though their QML
   objects remain allocated.
 
+### Waveform Editing
+
+Reserve 74 logical pixels at the right of each waveform row for that deck's
+editing panel. Keep the waveform-row heights and full-width hotcue strips
+unchanged. Match the panel background to an empty hotcue button. Both panels
+can be shown or hidden together; hiding them restores full-width scrolling
+waveforms. The sidebar starts hidden on startup and QML reload; visibility
+is not persisted across restarts.
+A 36 × 36-pixel icon toggle stays at the right edge, vertically centered
+between the two waveforms. Reserve 18 pixels at the adjacent end of each
+panel's button area so the toggle cannot cover editing controls. The toggle
+remains visible with the panels hidden and shows their active state.
+It becomes enabled after the skin-owned visibility control is ready, so
+starting hidden still allows the first tap to open the panels.
+Overlay a 2-pixel grey border on the panel's left edge using the
+same border color and thickness as an empty hotcue's bottom stripe.
+Center three two-column rows of icon-only buttons without a heading, with
+2-pixel gaps, original 24-pixel SVG icons, accessible action names, and
+fixed 36 × 36-pixel buttons, a requested compact-target exception:
+
+All editing buttons and the visibility toggle have no border.
+Idle backgrounds match the sidebar, regardless of loaded-track or BPM-lock
+state. Only a press changes a button's background; disabled icons still dim.
+
+- Grid/left-arrow and grid/right-arrow icons shift the beatgrid earlier/later using Mixxx's standard
+  small-step controls, matching LateNightQML.
+- A wider grid with a dashed midpoint and right arrow shifts the beatgrid later by half a beat, matching LateNightQML's
+  secondary action. The engine supports this action for constant-BPM tracks.
+- A flag/plus icon sets or replaces the intro start at the current playhead position,
+  honoring Mixxx quantization and intro/outro ordering constraints.
+- A magnet icon toggles the owning deck's standard `quantize` control. It uses
+  the deck's blue or green accent while enabled and follows controller changes.
+  Quantize remains available when BPM is locked.
+- An open/closed padlock toggles the track's standard BPM lock control. Its
+  button has no border; the open lock is neutral and the closed lock uses
+  Deck 1's blue or Deck 2's green accent. Small shifts occupy
+  the first row; quantize and half-beat shift occupy
+  the second; BPM lock and Set Intro occupy the third.
+
+The grid needs 112 pixels of height and fits at every target viewport,
+including 1024 × 600. It scrolls vertically if the waveform row is shorter.
+
+Disable grid shifts and show the closed padlock when the track's BPM is locked.
+Set Intro remains available for locked tracks. Disable every action while the
+deck is empty. Actions use a single tap; grid shifts and Set Intro immediately
+reset their core trigger controls, while BPM lock and quantize retain their states.
+Keyboard activation and visible focus feedback are available.
+The deck-coloured icon indicates the control's active state only. Keyboard
+focus uses a small neutral marker, so switching quantize off shows a neutral
+icon even while its button retains focus.
+
 ## Fourth Implementation Slice: Hotcue Strips
 
-Give each full-width waveform its own 32-pixel-high hotcue strip. Deck 1's strip
+Give each waveform row its own full-width 32-pixel-high hotcue strip. Deck 1's strip
 sits 2 pixels above its waveform, while Deck 2's strip sits 2 pixels below its
 waveform.
 
@@ -398,10 +517,24 @@ highlight their top/bottom edges with the deck accent.
   feedback. Selection and toggling must require no hover, right click, or mouse
   wheel.
 
-## Vinyl Settings
+## Settings
 
 Settings opens below the persistent header through core-owned
-`[Skin],show_settings`. It presents one touch panel per deck with 48-pixel
+`[Skin],show_settings`. The top row has right-aligned Preferences and Quit
+buttons with 160 × 48-pixel targets and a 16-pixel gap. Preferences opens the
+standard Mixxx preferences dialog; Quit requests normal application shutdown,
+matching the existing keyboard shortcuts.
+A row below exposes the shared Mixxx "Start in fullscreen"
+preference with a 48-pixel On/Off target and a note that it applies the next
+time Mixxx starts. Startup follows this preference once core initialization
+is complete; changing it does not change the current window state.
+The page scrolls vertically at smaller heights to keep every control reachable.
+Waveform zoom sliders apply immediately through the standard deck controls and
+follow changes from the controller. Moving right zooms in; moving left zooms
+out. Synchronized zoom presents one slider for both decks; independent zoom
+presents separate Deck 1 and Deck 2 sliders. Each slider has a 48-pixel-high
+touch target and a square handle with its deck accent.
+It also presents one touch panel per deck with 48-pixel
 targets for `vinylcontrol_enabled`, `vinylcontrol_mode` (`ABS`, `REL`, `CONST`),
 and `vinylcontrol_cueing` (`OFF`, `ONE`, `HOT`). These controls bind directly to
 existing deck ControlObjects, keeping controller and engine behavior shared.
@@ -456,7 +589,7 @@ boundaries.
   1366 × 768, and 1920 × 1080 logical pixels without essential controls being
   clipped or overlapping.
 - Core targets meet the 48 × 48 logical-pixel goal except the documented compact
-  DeckStatus and hotcue-strip height exceptions. All required actions work
+  DeckStatus, hotcue-strip, and waveform-editing exceptions. All required actions work
   without hover, right click, or a mouse wheel.
 - QML files load without runtime errors or unresolved imports. Auto-reloading
   the skin does not leave duplicate skin controls or invalid bindings.

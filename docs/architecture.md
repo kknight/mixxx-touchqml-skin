@@ -276,10 +276,12 @@ Total           208
 ```
 
 `main.qml` first shows a startup screen, then loads `TouchMainWindow.qml` only
-after `Mixxx.Core.ready`. `TouchMainWindow.qml` keeps NavigationBar and
-DeckStatus persistent, then uses a
+after `Mixxx.Core.ready`. Once core is ready, the root window reads
+`Mixxx.Config.configStartInFullscreenKey` and starts fullscreen or windowed
+accordingly, including after QML auto-reload. `TouchMainWindow.qml` keeps
+NavigationBar and DeckStatus persistent, then uses a
 `StackLayout` for everything below them. Performance, Browse, Touch FX, and
-Samples pages remain instantiated while hidden. This preserves browser source,
+Samples pages remain instantiated while hidden. This preserves browser
 filter, sort, selection, and scroll state and avoids rebuilding its model on
 each view change, at the cost of retaining page objects in memory.
 `PerformanceView` owns DeckOverview and the scrolling waveforms; `BrowseView`
@@ -292,8 +294,9 @@ even widths.
 
 The current components are:
 
-- `NavigationBar`: Browse, Touch FX, Samples, recording, battery, and clock
-  presentation.
+- `NavigationBar`: Browse, Touch FX, Samples, recording, battery, Settings, and
+  clock presentation. Settings uses an original cog icon in a 48-pixel target
+  immediately left of the clock, retaining its accessible name and active state.
   Its original monochrome SVG assets occupy consistent 24-pixel icon boxes so
   icons and labels share a visual centerline. Browse, Touch FX, and Samples use
   existing core-owned `[Skin]` controls and load mutually exclusive pages below
@@ -319,8 +322,8 @@ The current components are:
   stored-color triangle at the overview's top edge, pointing down at its marker
   line.
 - `PerformanceView`: the performance-only page below DeckStatus. It contains
-  DeckOverview followed by Deck 1's full-width hotcue strip and waveform, then
-  Deck 2's full-width waveform and hotcue strip. The two waveforms divide all
+  DeckOverview followed by Deck 1's full-width hotcue strip and waveform row, then
+  Deck 2's waveform row and full-width hotcue strip. The two waveform rows divide all
   vertical space remaining after fixed controls equally. They are display-only
   and composed locally from the portable
   `Mixxx.Controls.WaveformDisplay` API with RGB signal, beat, playhead,
@@ -328,12 +331,67 @@ The current components are:
   renderer's `defaultMark` creates native hotcue marks, preserving each cue's
   number, saved label, stored color, type, and end position. Saved-loop hotcues
   therefore show their range and endpoint. Main cue and active-loop marks remain
-  explicit. Intro/outro ranges and both endpoints follow the persistent
+  explicit in a separate mark renderer, alongside intro/outro endpoints. This
+  avoids the core marker-set priority collision between the first explicit
+  mark and Hotcue 1 when they share a position. The native-hotcue renderer
+  owns the playhead and next-hotcue readout; the explicit-marker renderer has
+  a transparent playhead and no next-marker readout.
+  Fixed markers render first, with native hotcues and the playhead above them
+  so overlapping CUE/loop markers do not obscure hotcue markers.
+  Intro/outro ranges and both endpoints follow the persistent
   TouchQML-owned `[Skin],show_intro_outro_cues` control. Blue and green 3-pixel
   left accents identify Deck 1 and Deck 2 respectively. The white playhead sits
   at one third of the waveform width, leaving two thirds for upcoming audio.
   Markers appear only while their positions are inside the visible scrolling
   window.
+  Zoom binds to the deck's core `waveform_zoom` control, or Deck 1's control
+  when synchronized waveform zoom is enabled. Each owning deck initializes
+  its control from `Mixxx.Config.waveformDefaultZoom` and follows changes to
+  that preference, matching LateNightQML. This avoids starting at the core's
+  value of 1, which is already the maximum zoom-in level. Controller zoom
+  changes then flow directly into the renderer.
+- `WaveformEditPanel`: a 74-pixel-wide panel to the right of each scrolling
+  waveform, leaving waveform-row heights and full-width hotcue strips intact.
+  Its background uses `controlBackground`, matching an empty hotcue button.
+  Both panels follow the transient skin-owned `[Skin],show_beatgrid_controls`
+  toggle, matching LateNightQML's control name, and start hidden on startup or
+  QML reload. Hiding them restores the
+  full scrolling-waveform width. The control is created in `TouchMainWindow`
+  and observed in `MainWaveformRow`, preserving controller interoperability.
+  `TouchMainWindow.skinControlsReady` becomes true on component completion;
+  only then does a Loader create the toggle's `ControlProxy`. This avoids
+  binding to the transient control before it exists. The toggle is enabled
+  only once its proxy is initialized.
+  A 36-pixel icon toggle remains at the right edge, vertically centered on
+  the waveform boundary. Each panel reserves 18 pixels at this boundary so
+  the toggle never overlaps its editing buttons.
+  A 2-pixel grey divider overlays its left edge, matching empty hotcue stripes.
+  It has no heading; original 24-pixel SVG icons identify the buttons, with
+  accessible names describing each action and open/closed lock state icons.
+  A two-column grid places small shifts in the first row, quantize
+  and half-beat shift in the second, and BPM lock and Set Intro in the third.
+  Buttons are fixed 36 × 36-pixel squares with 2-pixel
+  gaps. All buttons are borderless and share the sidebar's
+  background when idle, including Set Intro with a loaded track; only presses
+  change button backgrounds. The 112-pixel-high grid fits every target viewport; the panel scrolls
+  vertically if the waveform height falls below that.
+  Its buttons trigger the owning deck's existing
+  `beats_translate_earlier`, `beats_translate_later`, `beats_translate_half`,
+  and `intro_start_set` controls with `ControlProxy.trigger()`, which resets
+  each trigger immediately. Small shifts match LateNightQML; half-beat shifting
+  moves the grid later and is supported by the engine for constant-BPM tracks.
+  The quantize button toggles the owning deck's existing `quantize` control;
+  its magnet icon uses the deck accent while enabled and follows controller
+  changes. Icon accents follow control state only; keyboard focus is indicated
+  by a small neutral marker so a focused, disabled quantize state cannot appear
+  active. BPM lock does not disable quantize.
+  A BPM lock button toggles the existing `bpmlock` control and displays its live
+  state, including controller changes. The borderless button shows an open
+  neutral lock when unlocked and a closed lock tinted with the deck's blue or
+  green accent when locked. Grid edits are disabled when BPM is
+  locked; all actions are disabled without a loaded track. Set Intro places
+  or replaces the intro start at the engine's
+  quantized current position, preserving its intro/outro ordering checks.
 - `DeckHotcueGrid`: a full-width 32-pixel strip of eight equal buttons. Deck 1's
   strip sits 2 pixels above its waveform; Deck 2's sits 2 pixels below. Buttons
   have 2-pixel gaps, no outer padding or outlines, a neutral dark-gray
@@ -357,32 +415,106 @@ The current components are:
   `EffectsManager.visibleEffectsModel` or `quickChainPresetModel`; choosing an
   item changes `EffectSlotProxy.effectId` or `loaded_chain_preset` without
   changing the slot or chain enabled state.
-- `BrowseView`: a touch-native all-tracks list backed by
-  `Mixxx.LibrarySourceTree`/`LibraryTrackListModel`. Its visible columns show
-  track/artist, rating, genre, comment, key, and duration, using live properties
-  from each QML track proxy. The input above the columns filters those fields
-  through a debounced `DelegateModel` group. Tapping selects a track, and
+- `BrowseView`: a touch-native All Tracks browser. A hidden
+  `LibrarySourceTree` defines the columns and creates the browser's track proxy
+  once through `allTracks()`, using the API available on Mixxx main. No sidebar,
+  crate, playlist, history, or source-switching API is used. Its visible columns
+  show
+  track/artist, Genre, Comment, BPM, Rating, Key, Time, and Last, in that order.
+  Metadata comes from live QML track properties; BPM and Last Played use
+  `LibraryTrackListModel.data()` with `Qt.DisplayRole` for Mixxx's localized
+  tempo precision and date formatting. `DelegateModel.modelIndex()` maps
+  filtered row indices back to model rows. Model data/layout/reset signals and
+  the BPM precision preference invalidate these display values. Missing values
+  use `--`. Row text consumes the model's `Qt.ForegroundRole`, which applies
+  Mixxx's Grey out played tracks preference to the actual played flag (not
+  Last Played or load state). The override covers title, artist, and every
+  metadata column, including Key; without it, normal theme/key colors apply.
+  Selection backgrounds, artwork, and load indicators remain distinct. The
+  three-pixel left strip is blue for Deck 1, green for Deck 2, and orange for
+  Preview Deck 1, with that precedence when loaded in multiple players. Other
+  rows use `libraryRowSelectedBackground` for the strip, so selection alone
+  never gets a deck accent and the strip blends into a selected row. Model
+  signals refresh the color after played-state changes. Since the preference
+  has no QML property or change notification, a one-second timer rechecks
+  foreground colors only while Browse is visible; reopening Browse also
+  refreshes them without rebuilding the model or resetting selection/scroll.
+  Genre, Comment, Rating, and Last widths scale within fixed bounds
+  across supported landscape widths, leaving Title/Artist the remaining space.
+  Key labels format `numericKey` with
+  `KeyUtils.keyToString()` and the live `[Library],key_notation` control,
+  because the track proxy's `keyText` notification covers track edits but not
+  notation preference changes. Labels update without reopening Browse or
+  restarting Mixxx. Active text searches use the same formatted key and are
+  reapplied on notation changes, retaining selection if it still matches and
+  avoiding an explicit scroll reset. The input above the columns filters those
+  fields through a debounced `DelegateModel` group. Tapping selects a track, and
   starting a left drag selects it before revealing two 96-pixel-wide
   `Load 1`/`Load 2` actions. Those actions call
   `Player.loadTrackFromLocationUrl()`; double-tapping remains an optional next-
   available-deck shortcut. Opening a row closes the previously open row, and
-  pooled delegates reset before reuse. A source button beside search opens a
-  centered touch tree backed by `LibrarySourceTree.sidebar()` and swaps the
-  track model when a source is activated. Current Mixxx QML exposes only the
-  creatable `LibraryAllTrackSource`; playlist, crate, and other source wrappers
-  are not yet available to an external QML skin, so the picker currently
-  contains All Tracks only. Its 48-pixel headers call
-  `LibraryTrackListModel.sort()` when the model advertises sorting support and
+  pooled delegates reset before reuse. Genre and comment popups consume
+  mouse/touch input through exclusive control tap handlers and accepting
+  content/backdrop MouseAreas. Backdrop dismissal waits for release, preventing
+  a dismissal press from reaching lower controls. Empty popup areas and backdrop
+  wheel events are consumed; list scrolling remains available.
+  The track proxy's upstream `getCapabilities()` method controls sorting and
+  loading. Its 48-pixel headers call `LibraryTrackListModel.sort()` and
   default to Genre ascending, then preserve selection by URL across later
   ascending and descending sorts. Holding the Genre header for 500 milliseconds
-  opens a touch popup containing the source model's unique non-empty genre
+  opens a touch popup containing the all-tracks model's unique non-empty genre
   values plus an All Genres option. The selected exact, case-insensitive genre
   filter combines with text search and persists while Browse remains
-  instantiated. Loading is likewise enabled only when the model advertises
-  deck-loading support. Rating, genre, comment, and duration use the verified
-  current `ColumnCache` IDs because `TrackListColumn.SQLColumns` does not expose
-  those fields yet. Persistent page ownership also preserves ListView position
-  while Browse is hidden. A compact Preview Deck 1 control sits left of search:
+  instantiated. Holding Comment for 500 milliseconds opens the same
+  `ValueFilterPicker` with case-insensitively unique, sorted whitespace-separated
+  comment tokens and All Comments. Matching requires a whole token, combines
+  with genre and text search, and highlights the Comment header in Sync Lead
+  color. Tokens retain punctuation and are collected from every row in the
+  full library, independent of active filters. Filter changes reset selection
+  and scroll like Genre. Metadata refreshes rebuild token choices while retaining an active filter.
+  Loading is likewise enabled only when the model advertises
+  deck-loading support. Rating, genre, comment, duration, and Last Played use
+  the verified current `ColumnCache` IDs because `TrackListColumn.SQLColumns` does not expose
+  those fields yet; BPM uses its named `Bpm` enum. Rating is column ID 26 and
+  Last Played is 41 in the current checkout. All eight headers sort their
+  corresponding model column; Genre remains the initial ascending sort.
+  Persistent page ownership also preserves ListView position while Browse is
+  hidden. Model refreshes, including deck/preview load metadata and library
+  membership updates, reapply local filters without clearing the selected
+  URL or scrolling to the beginning. Deck/preview indicators
+  consume the live `loaded_deck_mask` and `preview_deck_loaded` roles supplied
+  by `feature/qml-mark-loaded-track`. `TrackRow` declares them as required
+  model-role properties; bit 0 identifies Deck 1 and bit 1 identifies Deck 2,
+  with the preview role covering any preview deck. Indicator-only dataChanged
+  notifications update delegates without scheduling filtering or changing
+  selection/scroll. Marker colours remain independent of played-track
+  foreground colours and no longer compare player track URLs.
+  Search and genre/comment choices read cached scalar metadata through the
+  track proxy's `data()` with `Qt.EditRole`, never the full `track` role. Two extra model columns
+  expose Artist and numeric Key for filtering only; the eight visible columns
+  remain unchanged. Key searches use the same live notation as row labels.
+  URL matching maps source rows to DelegateModel entries without assuming that
+  filtered indices equal source indices. Empty search/genre/comment filters skip
+  title, artist, key, and URL reads; genre and comment reads collect choices.
+  Full QML track objects remain confined to
+  visible/pooled delegates. Before row removal, insertion, movement, layout
+  changes, or resets, Browse saves the scroll offset; after the debounced
+  update settles, it remaps the URL into the filtered list and restores the
+  offset within the new scroll limits. Manual flick/wheel scrolling, scrollbar
+  dragging, and explicit row selection/movement cancel pending restoration.
+  Completed row insertions, removals, and moves refresh scalar display values
+  and schedule filter/selection reconciliation, even without a model reset or
+  an accompanying metadata notification.
+  Metadata-only refreshes do not capture scroll position unless filtering
+  changes group membership. ListView does not automatically follow currentIndex;
+  keyboard/controller movement and explicit sorting position the selected row.
+  Selection reconciliation waits through
+  transient empty lists. If the selected track disappears, it chooses the
+  nearest remaining filtered row, or clears selection for a genuinely empty
+  result. Query/genre/comment changes reset selection and scroll; sorting
+  preserves the selected URL and brings its new row into view. Loading does not request a
+  sort or reset the browser.
+  A compact Preview Deck 1 control sits left of search:
   its play/pause button drives the standard preview-deck play control, and its
   full-track RGB overview shows playback position and supports touch seeking.
   Holding a load-capable track row for 500 milliseconds selects it, loads it
@@ -408,8 +540,17 @@ The current components are:
 - `EffectRackView` and `SampleRackView`: empty page placeholders selected by the
   core-owned `[Skin],show_effectrack` and `[Skin],show_samplers` controls.
 - `SettingsView`: selected by core-owned `[Skin],show_settings`; it exposes
-  touch controls for both decks' vinyl-control enable state, tracking mode
+  Preferences and Quit touch buttons calling `Mixxx.PreferencesDialog.show()`
+  and `Qt.quit()`, matching the application-wide keyboard shortcuts, plus
+  a touch toggle for Mixxx's shared `configStartInFullscreenKey` preference,
+  applied on the next startup, and touch controls for both decks'
+  vinyl-control enable state, tracking mode
   (`ABS`, `REL`, `CONST`), and relative cueing mode (`OFF`, `ONE`, `HOT`).
+  Settings scrolls vertically when its controls exceed the available height.
+  A waveform zoom panel writes the live core `waveform_zoom` controls, with
+  one slider for both waveforms when synchronized zoom is enabled and one per
+  deck otherwise. Slider position increases toward zoom-in by reversing the
+  core's 1–10 scale. Control bindings also reflect controller-driven changes.
 - `TouchTheme`: the fixed layout metrics, touch size, colors, and typography
   shared by the first slice.
 
@@ -473,9 +614,9 @@ Still experimental or incomplete:
 - The example is fixed at four engine decks and 64 samplers, with a declared
   minimum width of 1280. It aims to match LateNight, not demonstrate a small
   minimal skin.
-- TouchQML is still an early slice: Browse has a source-picker overlay, but the
-  current Mixxx QML API exposes only All Tracks rather than playlists, crates,
-  and other sources. Touch FX and Samples pages are empty, and transport, mixer,
+- TouchQML is still an early slice: Browse deliberately shows only All Tracks;
+  playlist, crate, history, and other source navigation are absent. Touch FX and
+  Samples pages are empty, and transport, mixer,
   additional pad modes, and the rest of the performance view are still absent.
 - Some scene-graph waveform renderer combinations remain unsupported; see the
   FIXMEs in `src/qml/qmlwaveformrenderer.cpp` and

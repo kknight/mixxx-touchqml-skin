@@ -9,14 +9,21 @@ Item {
     id: root
 
     readonly property real actionWidth: 192
+    required property int bpmColumnWidth
     required property int commentColumnWidth
     required property url cover_art
+    required property string displayBpm
+    required property string displayKey
+    required property string displayLastPlayed
     property real dragStartX: 0
     required property int durationColumnWidth
     required property url file_url
+    required property var foregroundColor
     required property int genreColumnWidth
+    readonly property bool hasForegroundColor: root.foregroundColor !== undefined && root.foregroundColor !== null
     required property int index
     required property int keyColumnWidth
+    required property int lastPlayedColumnWidth
     required property bool loadEnabled
     property int loadedDeckMask: 0
     property bool menuOpen: false
@@ -71,7 +78,7 @@ Item {
         if (root.previewDeckLoaded) {
             return TouchTheme.previewAccent;
         }
-        return root.selected ? TouchTheme.deck1Accent : "transparent";
+        return TouchTheme.libraryRowSelectedBackground;
     }
 
     clip: true
@@ -171,7 +178,7 @@ Item {
                 spacing: 1
 
                 Text {
-                    color: TouchTheme.primaryText
+                    color: root.hasForegroundColor ? root.foregroundColor : TouchTheme.primaryText
                     elide: Text.ElideRight
                     font.family: TouchTheme.fontFamily
                     font.pixelSize: 16
@@ -180,17 +187,13 @@ Item {
                     width: parent.width
                 }
                 Text {
-                    color: TouchTheme.secondaryText
+                    color: root.hasForegroundColor ? root.foregroundColor : TouchTheme.secondaryText
                     elide: Text.ElideRight
                     font.family: TouchTheme.fontFamily
                     font.pixelSize: 13
                     text: root.track?.artist || qsTr("Unknown artist")
                     width: parent.width
                 }
-            }
-            MetadataValue {
-                Layout.preferredWidth: root.ratingColumnWidth
-                text: root.track && root.track.stars > 0 ? root.track.stars + "/5" : "--"
             }
             MetadataValue {
                 Layout.preferredWidth: root.genreColumnWidth
@@ -201,15 +204,26 @@ Item {
                 text: root.track?.comment || "--"
             }
             MetadataValue {
+                Layout.preferredWidth: root.bpmColumnWidth
+                text: root.displayBpm || "--"
+            }
+            MetadataValue {
+                Layout.preferredWidth: root.ratingColumnWidth
+                text: root.track && root.track.stars > 0 ? root.track.stars + "/5" : "--"
+            }
+            MetadataValue {
                 Layout.preferredWidth: root.keyColumnWidth
-                color: root.keyColor(root.track?.numericKey || 0)
-                text: root.track?.keyText || "--"
+                color: root.hasForegroundColor ? root.foregroundColor : root.keyColor(root.track?.numericKey || 0)
+                text: root.displayKey || "--"
             }
             MetadataValue {
                 Layout.preferredWidth: root.durationColumnWidth
-                color: TouchTheme.secondaryText
                 horizontalAlignment: Text.AlignRight
                 text: root.durationText(root.track?.duration || 0)
+            }
+            MetadataValue {
+                Layout.preferredWidth: root.lastPlayedColumnWidth
+                text: root.displayLastPlayed || "--"
             }
         }
         TapHandler {
@@ -286,7 +300,7 @@ Item {
     }
 
     component MetadataValue: Text {
-        color: TouchTheme.secondaryText
+        color: root.hasForegroundColor ? root.foregroundColor : TouchTheme.secondaryText
         elide: Text.ElideRight
         font.family: TouchTheme.fontFamily
         font.pixelSize: 13

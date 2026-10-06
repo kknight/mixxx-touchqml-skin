@@ -18,6 +18,21 @@ Rectangle {
 
         group: root.zoomGroup
         key: "waveform_zoom"
+
+        Component.onCompleted: {
+            if (zoomControl.group === root.group) {
+                zoomControl.value = Mixxx.Config.waveformDefaultZoom;
+            }
+        }
+    }
+    Connections {
+        target: Mixxx.Config
+
+        function onWaveformDefaultZoomChanged() {
+            if (zoomControl.group === root.group) {
+                zoomControl.value = Mixxx.Config.waveformDefaultZoom;
+            }
+        }
     }
     MixxxControls.WaveformDisplay {
         anchors.fill: parent
@@ -76,19 +91,10 @@ Rectangle {
         }
         Mixxx.WaveformRendererMark {
             playMarkerBackground: "transparent"
-            playMarkerColor: TouchTheme.primaryText
+            playMarkerColor: "transparent"
             playMarkerPosition: TouchTheme.mainWaveformPlayMarkerPosition
-            untilMark.align: Qt.AlignBottom
-            untilMark.showBeats: true
-            untilMark.showTime: true
-            untilMark.textSize: 11
-
-            defaultMark: Mixxx.WaveformMark {
-                align: "bottom|center"
-                color: TouchTheme.border.toString()
-                text: " %1 "
-                textColor: TouchTheme.primaryText.toString()
-            }
+            untilMark.showBeats: false
+            untilMark.showTime: false
 
             Mixxx.WaveformMark {
                 align: "top|right"
@@ -139,6 +145,22 @@ Rectangle {
                 control: "outro_end_position"
                 textColor: TouchTheme.primaryText.toString()
                 visibilityControl: "[Skin],show_intro_outro_cues"
+            }
+        }
+        Mixxx.WaveformRendererMark {
+            playMarkerBackground: "transparent"
+            playMarkerColor: TouchTheme.primaryText
+            playMarkerPosition: TouchTheme.mainWaveformPlayMarkerPosition
+            untilMark.align: Qt.AlignBottom
+            untilMark.showBeats: true
+            untilMark.showTime: true
+            untilMark.textSize: 11
+
+            defaultMark: Mixxx.WaveformMark {
+                align: "bottom|center"
+                color: TouchTheme.border.toString()
+                text: " %1 "
+                textColor: TouchTheme.primaryText.toString()
             }
         }
     }
