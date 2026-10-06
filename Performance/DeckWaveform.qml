@@ -164,6 +164,12 @@ Rectangle {
             }
         }
     }
+    WaveformNudgeArea {
+        anchors.fill: parent
+        accentColor: root.accentColor
+        group: root.group
+        z: 1
+    }
     Rectangle {
         anchors.bottom: parent.bottom
         anchors.left: parent.left

@@ -413,8 +413,18 @@ remaining space reserved for later transport, pad, and mixer slices.
   waveform-zoom preference. Initialize the owning zoom control from Mixxx's
   default waveform zoom preference and apply subsequent preference changes;
   secondary synchronized waveforms share Deck 1's control without resetting it.
-- Main waveforms are display-only in this slice. Do not copy the upstream mouse
-  scratching, right-button bending, or wheel-zoom handlers into the touch UI.
+- Drag a large scrolling waveform horizontally with one finger to temporarily
+  nudge its playing deck. Distance from the initial touch sets the bend:
+  right speeds up, left slows down, and returning to the starting position
+  removes the bend. A quarter of the waveform width reaches the maximum
+  additive speed change of ±25%; greater distances are clamped. Holding the
+  displaced finger keeps that bend until release. Show a thin deck-colored
+  outline during the drag. A stationary tap or vertical gesture does nothing.
+- Use the core `wheel` control without changing the pitch slider, scratching,
+  seeking, or waveform zoom. Left-button mouse dragging provides the same
+  interaction. Only loaded, playing decks respond. Release, cancellation,
+  page hiding, playback stopping, track replacement, and skin destruction
+  clear the gesture's bend. Keep the overviews' existing seek behavior.
 - Keep pages instantiated to preserve Browse state and avoid model reloads.
   Hidden pages do not contribute visible scene-graph nodes, though their QML
   objects remain allocated.

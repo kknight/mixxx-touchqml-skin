@@ -331,8 +331,8 @@ The current components are:
 - `PerformanceView`: the performance-only page below DeckStatus. It contains
   DeckOverview followed by Deck 1's full-width hotcue strip and waveform row, then
   Deck 2's waveform row and full-width hotcue strip. The two waveform rows divide all
-  vertical space remaining after fixed controls equally. They are display-only
-  and composed locally from the portable
+  vertical space remaining after fixed controls equally. They support touch
+  nudging and are composed locally from the portable
   `Mixxx.Controls.WaveformDisplay` API with RGB signal, beat, playhead,
   cue/hotcue, loop/intro/outro, preroll, and end-warning renderers. The mark
   renderer's `defaultMark` creates native hotcue marks, preserving each cue's
@@ -357,6 +357,18 @@ The current components are:
   that preference, matching LateNightQML. This avoids starting at the core's
   value of 1, which is already the maximum zoom-in level. Controller zoom
   changes then flow directly into the renderer.
+- `WaveformNudgeArea`: an overlay on each large scrolling waveform with a
+  single-point horizontal `DragHandler`, also accepting left-button mouse
+  drags. It writes the deck's existing `wheel` value, which RateControl adds
+  to playback speed and includes in synchronized-deck user tweaks. Horizontal
+  displacement from the initial press maps linearly to a temporary bend;
+  one quarter of the waveform width reaches ±0.25, with larger bends clamped.
+  Theme tokens centralize this sensitivity. The pitch slider is unchanged.
+  A thin deck-colored outline indicates an active drag. Only loaded, playing
+  decks accept gestures. An owned bend resets to zero on release, cancellation,
+  hiding, disabling, track replacement, or destruction; idle overlays do not
+  reset controller-driven wheel values. It does not enable scratch controls
+  or change overview seeking or waveform zoom.
 - `WaveformEditPanel`: a 74-pixel-wide panel to the right of each scrolling
   waveform, leaving waveform-row heights and full-width hotcue strips intact.
   Its background uses `controlBackground`, matching an empty hotcue button.
