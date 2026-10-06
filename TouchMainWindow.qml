@@ -64,6 +64,20 @@ Item {
         persist: false
     }
     Mixxx.SkinControlCreator {
+        buttonMode: Mixxx.SkinControlCreator.Toggle
+        defaultValue: 0
+        group: "[Skin]"
+        key: "touchqml_vinyl_mode_deck1"
+        persist: false
+    }
+    Mixxx.SkinControlCreator {
+        buttonMode: Mixxx.SkinControlCreator.Toggle
+        defaultValue: 0
+        group: "[Skin]"
+        key: "touchqml_vinyl_mode_deck2"
+        persist: false
+    }
+    Mixxx.SkinControlCreator {
         defaultValue: 1024
         group: "[Skin]"
         key: "touchqml_window_width"

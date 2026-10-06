@@ -39,6 +39,8 @@ Item {
         accentColor: TouchTheme.deck1Accent
         group: "[Channel1]"
         height: root.deckWaveformHeight
+        skinControlsReady: root.skinControlsReady
+        vinylModeKey: "touchqml_vinyl_mode_deck1"
         width: root.width - root.editPanelsWidth
     }
     WaveformEditPanel {
@@ -58,6 +60,8 @@ Item {
         accentColor: TouchTheme.deck2Accent
         group: "[Channel2]"
         height: root.deckWaveformHeight
+        skinControlsReady: root.skinControlsReady
+        vinylModeKey: "touchqml_vinyl_mode_deck2"
         width: root.width - root.editPanelsWidth
     }
     WaveformEditPanel {

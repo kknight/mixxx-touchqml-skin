@@ -413,18 +413,33 @@ remaining space reserved for later transport, pad, and mixer slices.
   waveform-zoom preference. Initialize the owning zoom control from Mixxx's
   default waveform zoom preference and apply subsequent preference changes;
   secondary synchronized waveforms share Deck 1's control without resetting it.
-- Drag a large scrolling waveform horizontally with one finger to temporarily
+- With Vinyl off, drag a large scrolling waveform horizontally with one finger to temporarily
   nudge its playing deck. Distance from the initial touch sets the bend:
   right speeds up, left slows down, and returning to the starting position
   removes the bend. A quarter of the waveform width reaches the maximum
   additive speed change of ±25%; greater distances are clamped. Holding the
   displaced finger keeps that bend until release. Show a thin deck-colored
   outline during the drag. A stationary tap or vertical gesture does nothing.
-- Use the core `wheel` control without changing the pitch slider, scratching,
+- Nudging uses the core `wheel` control without changing the pitch slider, scratching,
   seeking, or waveform zoom. Left-button mouse dragging provides the same
   interaction. Only loaded, playing decks respond. Release, cancellation,
   page hiding, playback stopping, track replacement, and skin destruction
   clear the gesture's bend. Keep the overviews' existing seek behavior.
+- Put an independent VINYL toggle at the upper-right of each large waveform,
+  with a 64 × 48-pixel target and 8-pixel top/right margins. Its label and bottom
+  stripe use the deck accent when active. Provide visible keyboard focus and
+  an accessible checked state. It starts off on startup or skin reload; mode
+  changes also follow the corresponding skin control from a controller.
+- With Vinyl on, touching a loaded deck's waveform holds the audio immediately;
+  dragging horizontally scratches instead of nudging. Pulling right moves the
+  audio backward, pulling left moves it forward, matching Mixxx's waveform
+  scratching. Paused decks can also be scratched. Follow the renderer's current
+  sample scale when the touch begins and keep it fixed during that contact.
+  Release uses Mixxx's native behavior, including inertia after fast throws.
+  Clear held scratch controls on release, cancellation, page hiding, track
+  replacement, mode changes, disabling, and destruction. A contact starting on
+  the VINYL button cannot also scratch or nudge the waveform. This toggle is
+  independent of the timecode vinyl-control settings.
 - Keep pages instantiated to preserve Browse state and avoid model reloads.
   Hidden pages do not contribute visible scene-graph nodes, though their QML
   objects remain allocated.

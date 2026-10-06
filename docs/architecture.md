@@ -357,7 +357,7 @@ The current components are:
   that preference, matching LateNightQML. This avoids starting at the core's
   value of 1, which is already the maximum zoom-in level. Controller zoom
   changes then flow directly into the renderer.
-- `WaveformNudgeArea`: an overlay on each large scrolling waveform with a
+- `WaveformTouchArea`: an overlay on each large scrolling waveform with a
   single-point horizontal `DragHandler`, also accepting left-button mouse
   drags. It writes the deck's existing `wheel` value, which RateControl adds
   to playback speed and includes in synchronized-deck user tweaks. Horizontal
@@ -367,8 +367,24 @@ The current components are:
   A thin deck-colored outline indicates an active drag. Only loaded, playing
   decks accept gestures. An owned bend resets to zero on release, cancellation,
   hiding, disabling, track replacement, or destruction; idle overlays do not
-  reset controller-driven wheel values. It does not enable scratch controls
-  or change overview seeking or waveform zoom.
+  reset controller-driven wheel values. In Vinyl mode a `PointHandler` instead
+  enables the standard `scratch_position_enable` control on contact and writes
+  `scratch_position` as negative horizontal displacement multiplied by twice
+  the renderer's `audioSamplePerPixel`, matching upstream waveform scratching.
+  The sample scale is captured on contact so zoom changes cannot cause a jump.
+  A stationary finger holds the audio; movement pulls the waveform under the
+  finger. Scratching also works on paused loaded decks. Scratch controls owned
+  by the gesture reset on release, cancellation, hiding, disabling, track
+  replacement, mode changes, and destruction. Release follows Mixxx's native
+  scratch behavior, including inertia for fast throws. Overview seeking and
+  waveform zoom remain unchanged.
+- `DeckWaveform` also shows a 64-by-48-pixel VINYL toggle in the upper-right
+  corner, above and excluded from the gesture area. Each deck has independent
+  state in transient skin-owned `[Skin],touchqml_vinyl_mode_deck1` and
+  `touchqml_vinyl_mode_deck2` toggle controls, created by `TouchMainWindow`.
+  Loaders wait for `skinControlsReady` before creating their proxies. The mode
+  starts off on startup/reload and follows controller changes. It is a touch
+  interaction mode, separate from the timecode `vinylcontrol_*` controls.
 - `WaveformEditPanel`: a 74-pixel-wide panel to the right of each scrolling
   waveform, leaving waveform-row heights and full-width hotcue strips intact.
   Its background uses `controlBackground`, matching an empty hotcue button.
