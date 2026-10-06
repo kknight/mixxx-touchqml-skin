@@ -9,6 +9,7 @@ Item {
     height: TouchTheme.deckStatusHeight
 
     DeckStatus {
+        accentColor: TouchTheme.deck1Accent
         group: "[Channel1]"
         height: parent.height
         syncPartnerGroup: "[Channel2]"
@@ -16,6 +17,7 @@ Item {
         x: 0
     }
     DeckStatus {
+        accentColor: TouchTheme.deck2Accent
         group: "[Channel2]"
         height: parent.height
         syncPartnerGroup: "[Channel1]"

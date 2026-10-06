@@ -6,6 +6,7 @@ import QtQuick.Layouts
 Rectangle {
     id: root
 
+    required property color accentColor
     readonly property real actionWidth: TouchTheme.deckStatusActionMinimumWidth +
         (TouchTheme.deckStatusActionWidth - TouchTheme.deckStatusActionMinimumWidth) * root.layoutProgress
     readonly property var currentTrack: player?.currentTrack
@@ -353,6 +354,13 @@ Rectangle {
                         beatSyncControl.trigger();
                     }
                 }
+            }
+            DeckPlayButton {
+                Layout.preferredHeight: TouchTheme.deckStatusRowHeight
+                Layout.preferredWidth: root.actionWidth
+                accentColor: root.accentColor
+                deckLoaded: root.loaded
+                group: root.group
             }
         }
     }

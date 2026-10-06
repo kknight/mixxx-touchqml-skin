@@ -316,6 +316,13 @@ The current components are:
   becomes a synchronized follower. Releasing after either hold action does not
   also trigger Beat Sync. Remaining time reads `time_remaining` and displays
   whole `mm:ss` values.
+- `DeckPlayButton`: a compact 56-to-64-by-36-pixel Play/Pause action after Sync
+  in each persistent deck header. It toggles the existing deck `play` control
+  on press, matching upstream QML behavior, and reads that same control for
+  its play/pause icon and deck-colored playback feedback. It is disabled for
+  empty decks, supports keyboard activation and visible focus, and remains
+  available while Browse, Touch FX, Samples, or Settings is open. Playback is
+  engine-owned and is not reset when the skin reloads.
 - `DeckOverview`: one clipped RGB full-track waveform per deck, showing only
   the upper/left channel with current position and cue/loop markers supplied by
   `Mixxx.Controls.WaveformOverview`. Each active hotcue marker gains a small
@@ -616,7 +623,7 @@ Still experimental or incomplete:
   minimal skin.
 - TouchQML is still an early slice: Browse deliberately shows only All Tracks;
   playlist, crate, history, and other source navigation are absent. Touch FX and
-  Samples pages are empty, and transport, mixer,
+  Samples pages are empty, and transport beyond Play/Pause, mixer,
   additional pad modes, and the rest of the performance view are still absent.
 - Some scene-graph waveform renderer combinations remain unsupported; see the
   FIXMEs in `src/qml/qmlwaveformrenderer.cpp` and

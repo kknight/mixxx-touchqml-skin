@@ -216,9 +216,15 @@ feedback.
     remaining-time, key, and BPM values.
   - Lower line: an elided artist followed by a combined
     `pitch icon / current pitch / ± / range` cell, then Loop, Beat Jump, and
-    Sync/Lead cells; use muted text for inactive values.
+    Sync/Lead and Play/Pause cells; use muted text for inactive values.
 - Text-only metadata is not a touch target. Compact Loop, Beat Jump, and Sync
   controls use the full 36-pixel row height.
+- Play/Pause uses the same 56-to-64-pixel width and 36-pixel height as the
+  other compact actions. Pressing toggles the standard deck `play` control,
+  matching Mixxx's QML play button. Show a neutral play triangle when stopped
+  and deck-colored pause bars while playing, including controller changes.
+  Disable it when no track is loaded. Keyboard activation and a neutral focus
+  marker remain available. Keep it visible on every page in the persistent header.
 - Tapping Sync triggers the momentary `beatsync` control and must not latch
   Sync. Holding it continuously for 2 seconds toggles `sync_leader` if the
   partner deck has no leader. If the partner is already Lead, the same hold
