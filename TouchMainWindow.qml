@@ -15,6 +15,7 @@ Item {
 
     required property ApplicationWindow applicationWindow
     readonly property real deckSplitX: width / 2
+    property bool skinControlsReady: false
     property bool windowSizeRestored: false
 
     Component.onCompleted: {
@@ -23,6 +24,7 @@ Item {
         applicationWindow.height = Math.max(applicationWindow.minimumHeight,
                                             windowHeightControl.value);
         root.windowSizeRestored = true;
+        root.skinControlsReady = true;
     }
     onHeightChanged: {
         if (windowSizeRestored && applicationWindow.visibility === Window.Windowed) {
@@ -53,6 +55,13 @@ Item {
         group: "[Skin]"
         key: "show_intro_outro_cues"
         persist: true
+    }
+    Mixxx.SkinControlCreator {
+        buttonMode: Mixxx.SkinControlCreator.Toggle
+        defaultValue: 0
+        group: "[Skin]"
+        key: "show_beatgrid_controls"
+        persist: false
     }
     Mixxx.SkinControlCreator {
         defaultValue: 1024
@@ -126,6 +135,7 @@ Item {
                     settingsViewControl.value > 0 ? 4 : 0
 
                 Performance.PerformanceView {
+                    skinControlsReady: root.skinControlsReady
                     splitX: root.deckSplitX
                 }
 

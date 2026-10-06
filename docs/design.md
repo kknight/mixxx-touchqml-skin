@@ -69,7 +69,8 @@ The original Mixxx design should have:
 
 - Normal interactive targets should be at least 48 × 48 logical pixels.
 - Compact DeckStatus actions at 36 pixels and waveform hotcue strips at 32
-  pixels are explicit height exceptions.
+  pixels are explicit height exceptions. Waveform editing buttons are an
+  explicit 36 × 36-pixel size exception.
 - No required action may depend on hover, a right click, or a mouse wheel.
 - Provide immediate visual feedback on press and a persistent indication for
   toggled state.
@@ -373,7 +374,7 @@ query, sort, selected row, and scroll position without rebuilding the model.
 ## Third Implementation Slice: Performance Waveforms
 
 `PerformanceView` begins below the persistent DeckStatus row. It owns the
-88-pixel `DeckOverviewRow`, two full-width stacked scrolling waveforms, and the
+88-pixel `DeckOverviewRow`, two stacked scrolling waveform rows, and the
 remaining space reserved for later transport, pad, and mixer slices.
 
 - Deck 1 is the upper scrolling waveform with a 3-pixel blue left accent.
@@ -406,9 +407,57 @@ remaining space reserved for later transport, pad, and mixer slices.
   Hidden pages do not contribute visible scene-graph nodes, though their QML
   objects remain allocated.
 
+### Waveform Editing
+
+Reserve 74 logical pixels at the right of each waveform row for that deck's
+editing panel. Keep the waveform-row heights and full-width hotcue strips
+unchanged. Match the panel background to an empty hotcue button. Both panels
+can be shown or hidden together; hiding them restores full-width scrolling
+waveforms. The sidebar starts hidden on startup and QML reload; visibility
+is not persisted across restarts.
+A 36 × 36-pixel icon toggle stays at the right edge, vertically centered
+between the two waveforms. Reserve 18 pixels at the adjacent end of each
+panel's button area so the toggle cannot cover editing controls. The toggle
+remains visible with the panels hidden and shows their active state.
+It becomes enabled after the skin-owned visibility control is ready, so
+starting hidden still allows the first tap to open the panels.
+Overlay a 2-pixel grey border on the panel's left edge using the
+same border color and thickness as an empty hotcue's bottom stripe.
+Center three two-column rows of icon-only buttons without a heading, with
+2-pixel gaps, original 24-pixel SVG icons, accessible action names, and
+fixed 36 × 36-pixel buttons, a requested compact-target exception:
+
+All editing buttons and the visibility toggle have no border.
+Idle backgrounds match the sidebar, regardless of loaded-track or BPM-lock
+state. Only a press changes a button's background; disabled icons still dim.
+
+- Grid/left-arrow and grid/right-arrow icons shift the beatgrid earlier/later using Mixxx's standard
+  small-step controls, matching LateNightQML.
+- A wider grid with a dashed midpoint and right arrow shifts the beatgrid later by half a beat, matching LateNightQML's
+  secondary action. The engine supports this action for constant-BPM tracks.
+- A flag/plus icon sets or replaces the intro start at the current playhead position,
+  honoring Mixxx quantization and intro/outro ordering constraints.
+- A magnet icon toggles the owning deck's standard `quantize` control. It uses
+  the deck's blue or green accent while enabled and follows controller changes.
+  Quantize remains available when BPM is locked.
+- An open/closed padlock toggles the track's standard BPM lock control. Its
+  button has no border; the open lock is neutral and the closed lock uses
+  Deck 1's blue or Deck 2's green accent. Small shifts occupy
+  the first row; quantize and half-beat shift occupy
+  the second; BPM lock and Set Intro occupy the third.
+
+The grid needs 112 pixels of height and fits at every target viewport,
+including 1024 × 600. It scrolls vertically if the waveform row is shorter.
+
+Disable grid shifts and show the closed padlock when the track's BPM is locked.
+Set Intro remains available for locked tracks. Disable every action while the
+deck is empty. Actions use a single tap; grid shifts and Set Intro immediately
+reset their core trigger controls, while BPM lock and quantize retain their states.
+Keyboard activation and visible focus feedback are available.
+
 ## Fourth Implementation Slice: Hotcue Strips
 
-Give each full-width waveform its own 32-pixel-high hotcue strip. Deck 1's strip
+Give each waveform row its own full-width 32-pixel-high hotcue strip. Deck 1's strip
 sits 2 pixels above its waveform, while Deck 2's strip sits 2 pixels below its
 waveform.
 
@@ -531,7 +580,7 @@ boundaries.
   1366 × 768, and 1920 × 1080 logical pixels without essential controls being
   clipped or overlapping.
 - Core targets meet the 48 × 48 logical-pixel goal except the documented compact
-  DeckStatus and hotcue-strip height exceptions. All required actions work
+  DeckStatus, hotcue-strip, and waveform-editing exceptions. All required actions work
   without hover, right click, or a mouse wheel.
 - QML files load without runtime errors or unresolved imports. Auto-reloading
   the skin does not leave duplicate skin controls or invalid bindings.

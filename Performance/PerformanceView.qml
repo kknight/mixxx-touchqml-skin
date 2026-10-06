@@ -12,6 +12,7 @@ Rectangle {
     readonly property real deckWaveformHeight: Math.max(0,
         (height - fixedControlsHeight) / 2)
     required property real splitX
+    required property bool skinControlsReady
 
     color: TouchTheme.background
 
@@ -30,6 +31,7 @@ Rectangle {
         anchors.right: parent.right
         anchors.top: overviewRow.bottom
         deckWaveformHeight: root.deckWaveformHeight
+        skinControlsReady: root.skinControlsReady
         height: root.deckWaveformHeight * 2 + TouchTheme.hotcueRowHeight * 2 +
             TouchTheme.hotcueWaveformSpacing * 2
     }

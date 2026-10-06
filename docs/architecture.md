@@ -322,8 +322,8 @@ The current components are:
   stored-color triangle at the overview's top edge, pointing down at its marker
   line.
 - `PerformanceView`: the performance-only page below DeckStatus. It contains
-  DeckOverview followed by Deck 1's full-width hotcue strip and waveform, then
-  Deck 2's full-width waveform and hotcue strip. The two waveforms divide all
+  DeckOverview followed by Deck 1's full-width hotcue strip and waveform row, then
+  Deck 2's waveform row and full-width hotcue strip. The two waveform rows divide all
   vertical space remaining after fixed controls equally. They are display-only
   and composed locally from the portable
   `Mixxx.Controls.WaveformDisplay` API with RGB signal, beat, playhead,
@@ -350,6 +350,46 @@ The current components are:
   that preference, matching LateNightQML. This avoids starting at the core's
   value of 1, which is already the maximum zoom-in level. Controller zoom
   changes then flow directly into the renderer.
+- `WaveformEditPanel`: a 74-pixel-wide panel to the right of each scrolling
+  waveform, leaving waveform-row heights and full-width hotcue strips intact.
+  Its background uses `controlBackground`, matching an empty hotcue button.
+  Both panels follow the transient skin-owned `[Skin],show_beatgrid_controls`
+  toggle, matching LateNightQML's control name, and start hidden on startup or
+  QML reload. Hiding them restores the
+  full scrolling-waveform width. The control is created in `TouchMainWindow`
+  and observed in `MainWaveformRow`, preserving controller interoperability.
+  `TouchMainWindow.skinControlsReady` becomes true on component completion;
+  only then does a Loader create the toggle's `ControlProxy`. This avoids
+  binding to the transient control before it exists. The toggle is enabled
+  only once its proxy is initialized.
+  A 36-pixel icon toggle remains at the right edge, vertically centered on
+  the waveform boundary. Each panel reserves 18 pixels at this boundary so
+  the toggle never overlaps its editing buttons.
+  A 2-pixel grey divider overlays its left edge, matching empty hotcue stripes.
+  It has no heading; original 24-pixel SVG icons identify the buttons, with
+  accessible names describing each action and open/closed lock state icons.
+  A two-column grid places small shifts in the first row, quantize
+  and half-beat shift in the second, and BPM lock and Set Intro in the third.
+  Buttons are fixed 36 × 36-pixel squares with 2-pixel
+  gaps. All buttons are borderless and share the sidebar's
+  background when idle, including Set Intro with a loaded track; only presses
+  change button backgrounds. The 112-pixel-high grid fits every target viewport; the panel scrolls
+  vertically if the waveform height falls below that.
+  Its buttons trigger the owning deck's existing
+  `beats_translate_earlier`, `beats_translate_later`, `beats_translate_half`,
+  and `intro_start_set` controls with `ControlProxy.trigger()`, which resets
+  each trigger immediately. Small shifts match LateNightQML; half-beat shifting
+  moves the grid later and is supported by the engine for constant-BPM tracks.
+  The quantize button toggles the owning deck's existing `quantize` control;
+  its magnet icon uses the deck accent while enabled and follows controller
+  changes. BPM lock does not disable quantize.
+  A BPM lock button toggles the existing `bpmlock` control and displays its live
+  state, including controller changes. The borderless button shows an open
+  neutral lock when unlocked and a closed lock tinted with the deck's blue or
+  green accent when locked. Grid edits are disabled when BPM is
+  locked; all actions are disabled without a loaded track. Set Intro places
+  or replaces the intro start at the engine's
+  quantized current position, preserving its intro/outro ordering checks.
 - `DeckHotcueGrid`: a full-width 32-pixel strip of eight equal buttons. Deck 1's
   strip sits 2 pixels above its waveform; Deck 2's sits 2 pixels below. Buttons
   have 2-pixel gaps, no outer padding or outlines, a neutral dark-gray

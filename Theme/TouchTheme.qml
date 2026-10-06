@@ -39,6 +39,10 @@ QtObject {
     readonly property color libraryRowBackground: "#0d1213"
     readonly property color libraryRowSelectedBackground: "#30393a"
     readonly property int mainWaveformAccentWidth: 3
+    readonly property int waveformEditPanelWidth: waveformEditButtonSize * 2 + waveformEditButtonSpacing
+    readonly property int waveformEditButtonSize: 36
+    readonly property int waveformEditButtonSpacing: 2
+    readonly property int waveformEditIconSize: 24
     readonly property real mainWaveformPlayMarkerPosition: 1 / 3
     readonly property int minimumTouchSize: 48
     readonly property color mutedText: "#707879"
