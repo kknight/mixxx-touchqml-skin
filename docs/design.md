@@ -413,6 +413,7 @@ remaining space reserved for later transport, pad, and mixer slices.
   waveform-zoom preference. Initialize the owning zoom control from Mixxx's
   default waveform zoom preference and apply subsequent preference changes;
   secondary synchronized waveforms share Deck 1's control without resetting it.
+  On reopening, session restoration uses the saved zoom when available.
 - With Vinyl off, drag a large scrolling waveform horizontally with one finger to temporarily
   nudge its playing deck. Distance from the initial touch sets the bend:
   right speeds up, left slows down, and returning to the starting position
@@ -428,7 +429,7 @@ remaining space reserved for later transport, pad, and mixer slices.
 - Put an independent VINYL toggle at the upper-right of each large waveform,
   with a 64 × 48-pixel target and 8-pixel top/right margins. Its label and bottom
   stripe use the deck accent when active. Provide visible keyboard focus and
-  an accessible checked state. It starts off on startup or skin reload; mode
+  an accessible checked state. It defaults off and remembers its state; mode
   changes also follow the corresponding skin control from a controller.
 - With Vinyl on, touching a loaded deck's waveform holds the audio immediately;
   dragging horizontally scratches instead of nudging. Pulling right moves the
@@ -450,8 +451,8 @@ Reserve 74 logical pixels at the right of each waveform row for that deck's
 editing panel. Keep the waveform-row heights and full-width hotcue strips
 unchanged. Match the panel background to an empty hotcue button. Both panels
 can be shown or hidden together; hiding them restores full-width scrolling
-waveforms. The sidebar starts hidden on startup and QML reload; visibility
-is not persisted across restarts.
+waveforms. The sidebar defaults hidden and remembers its visibility across
+restarts and QML reload.
 A 36 × 36-pixel icon toggle stays at the right edge, vertically centered
 between the two waveforms. Reserve 18 pixels at the adjacent end of each
 panel's button area so the toggle cannot cover editing controls. The toggle
@@ -569,6 +570,22 @@ It also presents one touch panel per deck with 48-pixel
 targets for `vinylcontrol_enabled`, `vinylcontrol_mode` (`ABS`, `REL`, `CONST`),
 and `vinylcontrol_cueing` (`OFF`, `ONE`, `HOT`). These controls bind directly to
 existing deck ControlObjects, keeping controller and engine behavior shared.
+
+## Remembering The Session
+
+Reopening restores loaded tracks in both decks and the preview deck, their
+playhead positions, pitch/range, keylock, quantize, loop/jump sizes, and waveform
+zoom. Tracks reopen paused. Remember the active page, Browse search and filters,
+sort, selected track, scroll position, Vinyl modes, editing-panel visibility,
+intro/outro visibility, and normal window dimensions. Track cues and effect
+configuration retain Mixxx's existing storage behavior.
+
+Save changes periodically and on normal closing. A missing track file must
+not erase the saved session entry just because restoration failed. A new load
+or explicit unload replaces the entry. QML reload must preserve already loaded
+tracks and live zoom. Restore browser selection by URL after its filtered model
+settles. Restore state rather than held gestures: playback, recording, active
+loop engagement, sync engagement, scratching, and nudging are not resumed.
 
 ## Architecture Constraints
 

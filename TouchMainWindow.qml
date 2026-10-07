@@ -18,6 +18,12 @@ Item {
     property bool skinControlsReady: false
     property bool windowSizeRestored: false
 
+    function saveSession() {
+        sessionLoader.item?.save();
+    }
+
+    Component.onDestruction: root.saveSession()
+
     Component.onCompleted: {
         applicationWindow.width = Math.max(applicationWindow.minimumWidth,
                                            windowWidthControl.value);
@@ -61,21 +67,21 @@ Item {
         defaultValue: 0
         group: "[Skin]"
         key: "show_beatgrid_controls"
-        persist: false
+        persist: true
     }
     Mixxx.SkinControlCreator {
         buttonMode: Mixxx.SkinControlCreator.Toggle
         defaultValue: 0
         group: "[Skin]"
         key: "touchqml_vinyl_mode_deck1"
-        persist: false
+        persist: true
     }
     Mixxx.SkinControlCreator {
         buttonMode: Mixxx.SkinControlCreator.Toggle
         defaultValue: 0
         group: "[Skin]"
         key: "touchqml_vinyl_mode_deck2"
-        persist: false
+        persist: true
     }
     Mixxx.SkinControlCreator {
         defaultValue: 1024
@@ -125,6 +131,14 @@ Item {
         group: "[Skin]"
         key: "show_settings"
     }
+    Loader {
+        id: sessionLoader
+
+        active: root.skinControlsReady
+        sourceComponent: SessionState {
+            browseView: browser
+        }
+    }
     Column {
         anchors.fill: parent
         spacing: 0
@@ -153,7 +167,9 @@ Item {
                     splitX: root.deckSplitX
                 }
 
-                Library.BrowseView {}
+                Library.BrowseView {
+                    id: browser
+                }
 
                 Effects.EffectRackView {}
 

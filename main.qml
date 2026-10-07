@@ -15,6 +15,8 @@ ApplicationWindow {
     title: qsTr("Touch QML")
     visible: true
 
+    onClosing: mainWindowLoader.item?.saveSession()
+
     function updateVisibility() {
         if (!Mixxx.Core.ready) {
             return;

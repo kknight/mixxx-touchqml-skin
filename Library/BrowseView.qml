@@ -41,12 +41,43 @@ Rectangle {
     property int sortColumn: 1
     property int sortOrder: Qt.AscendingOrder
     property var trackModel: null
+    property var pendingSessionState: null
 
     readonly property bool canLoadToDeck: root.hasCapabilities(Mixxx.LibraryTrackListModel.Capability.LoadToDeck)
     readonly property bool canLoadToPreviewDeck: numPreviewDecksControl.value > 0 && root.hasCapabilities(Mixxx.LibraryTrackListModel.Capability.LoadToPreviewDeck)
     readonly property bool canSort: root.hasCapabilities(Mixxx.LibraryTrackListModel.Capability.Sorting)
 
+    function sessionState() {
+        if (root.pendingSessionState) {
+            return root.pendingSessionState;
+        }
+        return {search: searchField.text, genre: root.selectedGenreFilter,
+            comment: root.selectedCommentFilter, sortColumn: root.sortColumn,
+            sortOrder: root.sortOrder, selectedUrl: root.selectedUrl.toString(),
+            scrollOffset: root.restoreScrollAfterFilter ? root.savedScrollOffset :
+                Math.max(0, trackList.contentY - trackList.originY)};
+    }
+    function restoreSessionState(state) {
+        if (!state || typeof state !== "object") {
+            return;
+        }
+        searchField.text = typeof state.search === "string" ? state.search : "";
+        root.selectedGenreFilter = typeof state.genre === "string" ? state.genre : "";
+        root.selectedCommentFilter = typeof state.comment === "string" ? state.comment : "";
+        if ([0, 1, 2, 3, 4, 5, 6, 7].includes(state.sortColumn)) {
+            root.sortColumn = state.sortColumn;
+        }
+        root.sortOrder = state.sortOrder === Qt.DescendingOrder ? Qt.DescendingOrder : Qt.AscendingOrder;
+        if (root.canSort) {
+            root.trackModel.sort(root.sortColumn, root.sortOrder);
+        }
+        root.pendingSessionState = state;
+        root.resetSelectionOnFilter = false;
+        root.revealSelectionAfterFilter = false;
+        root.scheduleSearchFilter();
+    }
     function cancelPendingPositionRestore() {
+        root.pendingSessionState = null;
         root.restoreScrollAfterFilter = false;
         root.revealSelectionAfterFilter = false;
     }
@@ -59,6 +90,7 @@ Rectangle {
     }
     function scheduleSearchFilter(resetSelection = false) {
         if (resetSelection) {
+            root.pendingSessionState = null;
             root.resetSelectionOnFilter = true;
             root.restoreScrollAfterFilter = false;
             root.revealSelectionAfterFilter = false;
@@ -68,6 +100,17 @@ Rectangle {
     function finishFilterUpdate() {
         if (searchFilterTimer.running || root.applyingSearchFilter) {
             return;
+        }
+        if (root.pendingSessionState) {
+            // Wait for asynchronous library population before reconciling the URL.
+            if (!root.trackModel || root.trackModel.rowCount() === 0) {
+                return;
+            }
+            const state = root.pendingSessionState;
+            root.pendingSessionState = null;
+            root.selectedUrl = typeof state.selectedUrl === "string" ? state.selectedUrl : "";
+            root.savedScrollOffset = Number.isFinite(state.scrollOffset) ? Math.max(0, state.scrollOffset) : 0;
+            root.restoreScrollAfterFilter = true;
         }
         root.ensureSelection();
         trackList.forceLayout();
@@ -228,7 +271,7 @@ Rectangle {
         trackList.positionViewAtIndex(nextIndex, ListView.Contain);
     }
     function ensureSelection() {
-        if (searchFilterTimer.running || root.applyingSearchFilter) {
+        if (searchFilterTimer.running || root.applyingSearchFilter || root.pendingSessionState) {
             return;
         }
         const count = searchResultsGroup.count;

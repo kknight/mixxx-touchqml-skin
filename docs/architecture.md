@@ -352,8 +352,9 @@ The current components are:
   Markers appear only while their positions are inside the visible scrolling
   window.
   Zoom binds to the deck's core `waveform_zoom` control, or Deck 1's control
-  when synchronized waveform zoom is enabled. Each owning deck initializes
-  its control from `Mixxx.Config.waveformDefaultZoom` and follows changes to
+  when synchronized waveform zoom is enabled. Session restoration initializes
+  each owning control from its saved zoom or `Mixxx.Config.waveformDefaultZoom`.
+  The waveform follows changes to
   that preference, matching LateNightQML. This avoids starting at the core's
   value of 1, which is already the maximum zoom-in level. Controller zoom
   changes then flow directly into the renderer.
@@ -380,22 +381,23 @@ The current components are:
   waveform zoom remain unchanged.
 - `DeckWaveform` also shows a 64-by-48-pixel VINYL toggle in the upper-right
   corner, above and excluded from the gesture area. Each deck has independent
-  state in transient skin-owned `[Skin],touchqml_vinyl_mode_deck1` and
+  state in persistent skin-owned `[Skin],touchqml_vinyl_mode_deck1` and
   `touchqml_vinyl_mode_deck2` toggle controls, created by `TouchMainWindow`.
   Loaders wait for `skinControlsReady` before creating their proxies. The mode
-  starts off on startup/reload and follows controller changes. It is a touch
-  interaction mode, separate from the timecode `vinylcontrol_*` controls.
+  defaults off, remembers its last state, and follows controller changes.
+  It is a touch interaction mode, separate from the timecode `vinylcontrol_*`
+  controls.
 - `WaveformEditPanel`: a 74-pixel-wide panel to the right of each scrolling
   waveform, leaving waveform-row heights and full-width hotcue strips intact.
   Its background uses `controlBackground`, matching an empty hotcue button.
-  Both panels follow the transient skin-owned `[Skin],show_beatgrid_controls`
-  toggle, matching LateNightQML's control name, and start hidden on startup or
-  QML reload. Hiding them restores the
+  Both panels follow the persistent skin-owned `[Skin],show_beatgrid_controls`
+  toggle, matching LateNightQML's control name, and remember their visibility
+  across startup and QML reload. Hiding them restores the
   full scrolling-waveform width. The control is created in `TouchMainWindow`
   and observed in `MainWaveformRow`, preserving controller interoperability.
   `TouchMainWindow.skinControlsReady` becomes true on component completion;
   only then does a Loader create the toggle's `ControlProxy`. This avoids
-  binding to the transient control before it exists. The toggle is enabled
+  binding to the skin-owned control before it exists. The toggle is enabled
   only once its proxy is initialized.
   A 36-pixel icon toggle remains at the right edge, vertically centered on
   the waveform boundary. Each panel reserves 18 pixels at this boundary so
@@ -600,6 +602,36 @@ The performance-pad feedback visible below the overviews in the design
 reference is deliberately not part of `DeckOverview` and does not consume any
 of the fixed 208-pixel stack. It belongs to a later component below the new
 scrolling waveforms.
+
+## Session Restoration
+
+`SessionState.qml` is loaded after `skinControlsReady`. QtCore `Settings` stores
+versioned JSON snapshots in `TouchQML-session.ini` inside the current Mixxx
+profile, using `Mixxx.Application.settingsDirectoryUrl`; this also respects a
+custom settings directory. Snapshots are synchronized once per second when
+changed and on window closing or main-window destruction, before core teardown.
+An abrupt termination can lose roughly the last second of state.
+
+`Deck/DeckSession.qml` stores loaded file URLs, normalized playhead positions,
+rate/range, keylock, quantize, loop/jump sizes, and waveform zoom for Deck 1,
+Deck 2, and Preview Deck 1 when available. Restored tracks load paused.
+`Player.trackLoaded` is the engine-completion gate for restoring controls and
+position, rather than `isLoaded`, which also becomes true during loading.
+An existing engine track is left alone on QML reload. A different track loaded
+by the user or controller takes precedence. Failed restores time out after
+15 seconds and preserve the saved track entry while the deck remains empty;
+loading another track or explicitly unloading replaces it. First use initializes
+zoom from Mixxx's default, and reload does not reset the live zoom.
+
+The UI snapshot restores the active page and Browse search, genre/comment
+filters, sort column/order, selected URL, and scroll offset. Browse reconciles
+selection and scroll after filtering and asynchronous library population.
+The persistent skin controls additionally restore the Vinyl toggles, editing
+panel visibility, intro/outro marker visibility, and normal window dimensions.
+Track metadata, hotcues, and saved loops continue to use Mixxx's track database;
+effect configuration continues to use Mixxx's own persistence. Held scratch,
+nudge, hotcue, and trigger controls are not stored, nor are playback, recording,
+sync engagement, or the active loop enabled state.
 
 ## Current State (2026-07-17)
 
