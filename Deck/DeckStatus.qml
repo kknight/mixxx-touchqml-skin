@@ -1,6 +1,7 @@
 import "../Theme"
 import Mixxx 1.0 as Mixxx
 import QtQuick
+import QtQuick.Controls
 import QtQuick.Layouts
 
 Rectangle {
@@ -34,6 +35,25 @@ Rectangle {
     readonly property var player: Mixxx.PlayerManager.getPlayer(root.group)
     readonly property real statusRightMargin: TouchTheme.deckStatusRightMargin * root.layoutProgress
     required property string syncPartnerGroup
+    property bool tempoResetPending: false
+
+    function finishTempoReset() {
+        if (!root.tempoResetPending || syncEnabledControl.value > 0 || !root.loaded) {
+            return;
+        }
+        root.tempoResetPending = false;
+        tempoResetTimeout.stop();
+        rateControl.value = 0;
+    }
+    function resetTempo() {
+        if (!root.loaded || root.tempoResetPending || !rateControl.initialized || !syncEnabledControl.initialized) {
+            return;
+        }
+        root.tempoResetPending = true;
+        tempoResetTimeout.restart();
+        syncEnabledControl.value = 0;
+        root.finishTempoReset();
+    }
 
     function beatSizeText(value) {
         if (!root.loaded || value <= 0) {
@@ -57,11 +77,30 @@ Rectangle {
     color: TouchTheme.deckStatusBackground
     height: TouchTheme.deckStatusHeight
 
+    onCurrentTrackChanged: {
+        root.tempoResetPending = false;
+        tempoResetTimeout.stop();
+    }
+
+    Timer {
+        id: tempoResetTimeout
+
+        interval: 2000
+
+        onTriggered: root.tempoResetPending = false
+    }
+
     Mixxx.ControlProxy {
         id: bpmControl
 
         group: root.group
         key: "bpm"
+    }
+    Mixxx.ControlProxy {
+        id: rateControl
+
+        group: root.group
+        key: "rate"
     }
     Mixxx.ControlProxy {
         id: rateRatioControl
@@ -128,6 +167,8 @@ Rectangle {
 
         group: root.group
         key: "sync_enabled"
+
+        onValueChanged: root.finishTempoReset()
     }
     Mixxx.ControlProxy {
         id: beatSyncControl
@@ -263,8 +304,11 @@ Rectangle {
             }
             PitchRangeCell {
                 available: root.loaded
+                enabled: root.loaded && rateControl.initialized && syncEnabledControl.initialized && !root.tempoResetPending
                 pitchText: root.loaded ? ((rateRatioControl.value - 1) * 100).toFixed(1) : "--"
                 rangeText: root.loaded ? (rateRangeControl.value * 100).toFixed(0) : "--"
+
+                onClicked: root.resetTempo()
             }
             IconValueCell {
                 available: root.loaded
@@ -414,7 +458,7 @@ Rectangle {
             onTapped: iconValueCell.triggered()
         }
     }
-    component PitchRangeCell: Item {
+    component PitchRangeCell: Button {
         id: pitchRangeCell
 
         required property bool available
@@ -424,6 +468,33 @@ Rectangle {
         Layout.preferredHeight: TouchTheme.deckStatusRowHeight
         Layout.preferredWidth: root.actionWidth + 32
         opacity: available ? 1.0 : 0.45
+        padding: 0
+
+        Accessible.name: qsTr("Reset tempo and leave sync")
+
+        background: Rectangle {
+            color: pitchRangeCell.down ? TouchTheme.controlPressedBackground : "transparent"
+
+            Rectangle {
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                color: TouchTheme.secondaryText
+                height: 12
+                visible: pitchRangeCell.visualFocus
+                width: 2
+            }
+        }
+        contentItem: Item {}
+
+        Text {
+            anchors.bottom: parent.bottom
+            anchors.horizontalCenter: parent.horizontalCenter
+            color: TouchTheme.mutedText
+            font.family: TouchTheme.fontFamily
+            font.pixelSize: 8
+            font.weight: Font.Bold
+            text: qsTr("RESET")
+        }
 
         Row {
             anchors.horizontalCenter: parent.horizontalCenter

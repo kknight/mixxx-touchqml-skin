@@ -219,6 +219,13 @@ feedback.
     Sync/Lead and Play/Pause cells; use muted text for inactive values.
 - Text-only metadata is not a touch target. Compact Loop, Beat Jump, and Sync
   controls use the full 36-pixel row height.
+- The existing Pitch/Range cell is also a compact reset button, with a small
+  visible RESET label below its values. A tap leaves sync and restores the
+  track's original BPM (0% pitch) on that deck. Wait for the engine to confirm
+  sync is off before resetting tempo, so the partner's BPM is unaffected.
+  Preserve playback, playhead position, and pitch range. Disable it for empty
+  decks and while the reset is pending; cancel a pending reset on track
+  replacement. Provide keyboard activation and a neutral focus marker.
 - Play/Pause uses the same 56-to-64-pixel width and 36-pixel height as the
   other compact actions. Pressing toggles the standard deck `play` control,
   matching Mixxx's QML play button. Show a neutral play triangle when stopped
@@ -288,6 +295,15 @@ remain instantiated in a `StackLayout`, so reopening Browse restores its
 query, sort, selected row, and scroll position without rebuilding the model.
 
 - Track rows are 56 logical pixels high and support touch flicking.
+- Show each track's mini RGB waveform across the row background, beneath its
+  album artwork, title/artist, and metadata. Align it to the bottom at a fixed
+  height of 20 pixels. Keep the waveform subdued at 50%
+  opacity so text, selected-row backgrounds, and loaded-deck strips stay clear.
+  It is decorative and cannot seek or intercept row gestures. Render settled
+  visible rows only; pooled/offscreen rows and moving lists release renderers.
+  After a brief settling delay, normal Mixxx analysis restores cached waveform
+  data or generates missing data, respecting the waveform-analysis preference.
+  Rows remain usable while their background waveform becomes available.
 - The browser aligns Title/Artist, Genre, Comment, BPM, Rating, Key, Time, Last
   under a persistent 48-pixel sortable column header. Tapping a header sorts
   ascending; tapping it again reverses order. Initial order is Genre ascending.
@@ -368,7 +384,8 @@ query, sort, selected row, and scroll position without rebuilding the model.
 - Key labels follow the current Key Notation preference immediately, including
   while Browse is hidden. Key searches use that same notation and refresh when
   it changes, retaining a still-matching selection without resetting scrolling
-  to the beginning.
+  to the beginning. Read the numeric key from the library model for both label
+  and palette color, so analysed keys display with the current Track QML API.
 - A 320-pixel compact preview control sits left of search when a preview deck is
   available. It contains a 48-pixel play/pause target and a seekable full-track
   RGB waveform for Preview Deck 1. Holding a track row for 500 milliseconds

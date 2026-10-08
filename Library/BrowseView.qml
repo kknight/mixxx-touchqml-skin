@@ -218,8 +218,11 @@ Rectangle {
     function rowForeground(row, _metadataRevision, _appearanceRevision, _fileUrl) {
         return root.columnValue(row, 0, Qt.ForegroundRole);
     }
-    function formattedKey(track) {
-        return Mixxx.KeyUtils.keyToString(track?.numericKey || 0, keyNotationControl.value);
+    function numericKey(row, _revision, _fileUrl) {
+        return Number(root.columnValue(row, 9, Qt.EditRole)) || 0;
+    }
+    function formattedKey(numericKey) {
+        return Mixxx.KeyUtils.keyToString(numericKey, keyNotationControl.value);
     }
     function hasCapabilities(capabilities) {
         return (root.modelCapabilities & capabilities) === capabilities;
@@ -665,7 +668,7 @@ Rectangle {
             bpmColumnWidth: root.bpmColumnWidth
             commentColumnWidth: root.commentColumnWidth
             displayBpm: root.columnText(visualTrackRow.index, 3, root.metadataRevision, visualTrackRow.file_url)
-            displayKey: root.formattedKey(visualTrackRow.track)
+            displayKey: root.formattedKey(visualTrackRow.numericKey)
             displayLastPlayed: root.columnText(visualTrackRow.index, 7, root.metadataRevision, visualTrackRow.file_url)
             durationColumnWidth: root.durationColumnWidth
             foregroundColor: root.rowForeground(visualTrackRow.index, root.metadataRevision, root.appearanceRevision, visualTrackRow.file_url)
@@ -673,6 +676,7 @@ Rectangle {
             keyColumnWidth: root.keyColumnWidth
             lastPlayedColumnWidth: root.lastPlayedColumnWidth
             loadEnabled: root.canLoadToDeck
+            numericKey: root.numericKey(visualTrackRow.index, root.metadataRevision, visualTrackRow.file_url)
             loadedDeckMask: {
                 const url = file_url.toString();
                 return (url === root.deck1LoadedUrl.toString() ? 1 : 0) | (url === root.deck2LoadedUrl.toString() ? 2 : 0);
@@ -682,6 +686,9 @@ Rectangle {
             ratingColumnWidth: root.ratingColumnWidth
             selected: root.selectedUrl.toString() === file_url.toString()
             width: trackList.width
+            waveformActive: root.visible && !trackList.moving &&
+                visualTrackRow.y + visualTrackRow.height > trackList.contentY &&
+                visualTrackRow.y < trackList.contentY + trackList.height
 
             onLoadNextRequested: root.loadUrlIntoNextAvailableDeck(file_url)
             onLoadRequested: group => {

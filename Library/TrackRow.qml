@@ -27,12 +27,16 @@ Item {
     required property bool loadEnabled
     property int loadedDeckMask: 0
     property bool menuOpen: false
+    required property int numericKey
+    property bool pooled: false
     property bool previewDeckLoaded: false
     property bool previewHoldTriggered: false
     required property bool previewEnabled
     required property int ratingColumnWidth
     property bool selected: false
     required property var track
+    required property bool waveformActive
+    property var waveformRequestedTrack: null
 
     signal loadNextRequested
     signal loadRequested(string group)
@@ -84,8 +88,29 @@ Item {
     clip: true
     height: 56
 
-    ListView.onPooled: root.closeMenu()
-    ListView.onReused: root.closeMenu()
+    onTrackChanged: root.waveformRequestedTrack = null
+
+    ListView.onPooled: {
+        root.pooled = true;
+        root.closeMenu();
+    }
+    ListView.onReused: {
+        root.pooled = false;
+        root.closeMenu();
+    }
+
+    Timer {
+        // The native overview reads an in-memory summary. The library analysis
+        // API restores cached waveforms (or generates missing ones) into Track.
+        interval: 300
+        running: root.waveformActive && !root.pooled && root.track !== null &&
+            root.track !== root.waveformRequestedTrack && Mixxx.Config.waveformGenerationWithAnalysisEnabled
+
+        onTriggered: {
+            root.waveformRequestedTrack = root.track;
+            Mixxx.Library.analyze(root.track);
+        }
+    }
 
     Row {
         anchors.bottom: parent.bottom
@@ -135,6 +160,26 @@ Item {
             }
         }
 
+        Loader {
+            anchors.left: parent.left
+            anchors.right: parent.right
+            anchors.bottom: parent.bottom
+            height: 20
+            active: root.waveformActive && !root.pooled
+
+            sourceComponent: Mixxx.WaveformOverview {
+                track: root.track
+                channels: Mixxx.WaveformOverview.Channels.BothChannels
+                renderer: Mixxx.WaveformOverview.Renderer.RGB
+                colorHigh: TouchTheme.waveformHigh
+                colorMid: TouchTheme.waveformMid
+                colorLow: TouchTheme.waveformLow
+                minuteMarkers: false
+                normalized: true
+                stereo: false
+                opacity: TouchTheme.libraryRowWaveformOpacity
+            }
+        }
         Rectangle {
             anchors.bottom: parent.bottom
             anchors.left: parent.left
@@ -213,7 +258,7 @@ Item {
             }
             MetadataValue {
                 Layout.preferredWidth: root.keyColumnWidth
-                color: root.hasForegroundColor ? root.foregroundColor : root.keyColor(root.track?.numericKey || 0)
+                color: root.hasForegroundColor ? root.foregroundColor : root.keyColor(root.numericKey)
                 text: root.displayKey || "--"
             }
             MetadataValue {

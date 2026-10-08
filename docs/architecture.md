@@ -316,6 +316,14 @@ The current components are:
   becomes a synchronized follower. Releasing after either hold action does not
   also trigger Beat Sync. Remaining time reads `time_remaining` and displays
   whole `mm:ss` values.
+  The existing Pitch/Range cell is a Button with a visible RESET label.
+  It requests `sync_enabled = 0`, waits for that control's actual value to
+  confirm sync disengagement, then sets `rate = 0`, giving a `rate_ratio` of 1
+  independently of rate direction/range. This also resets a one-shot Beat Sync
+  tempo change when sync was not latched. It leaves play state, position, range,
+  and the partner deck's tempo unchanged. A transient pending flag suppresses
+  repeat requests and is cleared on track changes or after a two-second timeout.
+  Keyboard activation, accessible naming, and visible focus are supported.
 - `DeckPlayButton`: a compact 56-to-64-by-36-pixel Play/Pause action after Sync
   in each persistent deck header. It toggles the existing deck `play` control
   on press, matching upstream QML behavior, and reads that same control for
@@ -478,10 +486,11 @@ The current components are:
   refreshes them without rebuilding the model or resetting selection/scroll.
   Genre, Comment, Rating, and Last widths scale within fixed bounds
   across supported landscape widths, leaving Title/Artist the remaining space.
-  Key labels format `numericKey` with
-  `KeyUtils.keyToString()` and the live `[Library],key_notation` control,
-  because the track proxy's `keyText` notification covers track edits but not
-  notation preference changes. Labels update without reopening Browse or
+  Key labels and palette colors read numeric Key from model column 9 using
+  `Qt.EditRole`, mapped from the filtered row index and refreshed by metadata
+  notifications. The current QML Track API has no `numericKey` property.
+  Labels format that value with `KeyUtils.keyToString()` and the live
+  `[Library],key_notation` control. Labels update without reopening Browse or
   restarting Mixxx. Active text searches use the same formatted key and are
   reapplied on notation changes, retaining selection if it still matches and
   avoiding an explicit scroll reset. The input above the columns filters those
@@ -534,7 +543,20 @@ The current components are:
   filtered indices equal source indices. Empty search/genre/comment filters skip
   title, artist, key, and URL reads; genre and comment reads collect choices.
   Full QML track objects remain confined to
-  visible/pooled delegates. Before row removal, insertion, movement, layout
+  visible/pooled delegates. Each settled visible row has a noninteractive native
+  `Mixxx.WaveformOverview` behind artwork, text, separators, and load indicators,
+  displaying a normalized mono RGB summary at a theme-owned opacity of 0.50.
+  Its full-width Loader is bottom-aligned with a fixed height of 20 pixels.
+  A Loader releases the renderer for pooled/offscreen rows and while flicking.
+  The overview API reads only in-memory summaries, not the disk overview cache.
+  After 300 ms on screen, each assigned Track proxy requests normal library
+  analysis once through `Mixxx.Library.analyze(track)` to hydrate stored
+  waveforms, or generate missing analysis. Requests honor the existing waveform
+  generation-with-analysis preference; the skin does not change that preference
+  or force reanalysis. Cached compatible analysis is reused by the engine;
+  uncached or outdated analysis can require background processing. Rebinding a
+  reused row clears its request state. No deck is loaded or seek control bound.
+  Before row removal, insertion, movement, layout
   changes, or resets, Browse saves the scroll offset; after the debounced
   update settles, it remaps the URL into the filtered list and restores the
   offset within the new scroll limits. Manual flick/wheel scrolling, scrollbar

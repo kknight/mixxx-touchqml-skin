@@ -38,6 +38,7 @@ QtObject {
     readonly property color libraryRowAlternateBackground: "#111617"
     readonly property color libraryRowBackground: "#0d1213"
     readonly property color libraryRowSelectedBackground: "#30393a"
+    readonly property real libraryRowWaveformOpacity: 0.50
     readonly property int mainWaveformAccentWidth: 3
     readonly property real mainWaveformNudgeDistanceFraction: 0.25
     readonly property real mainWaveformNudgeMaximumRate: 0.25
